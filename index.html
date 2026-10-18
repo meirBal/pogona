@@ -1,0 +1,1025 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#ECEEE7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#111512" media="(prefers-color-scheme: dark)">
+<meta name="description" content="יומן, שגרה ומדריך בעברית לגידול חרדונים">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="פוגונה">
+<title>פוגונה</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700&family=Karantina:wght@700&display=swap">
+<style>
+/* Layout: a phone-first app shell — sticky header, one scrolling view, bottom tab bar; max 560px centered on desktop. Palette: Negev stone + ochre dragon + basalt teal. */
+:root{
+  --bg:#ECEEE7; --surface:#F8F9F4; --surface2:#E2E6DC; --ink:#1D221C; --muted:#5B6459; --line:#D2D7CB;
+  --accent:#B9790C; --accent-ink:#7E5005; --accent-soft:#F4E4C0; --basalt:#2E5B57; --basalt-soft:#D6E4E1;
+  --ok:#2C7A4B; --watch:#9C6500; --act:#BF4F1B; --vet:#B0261E;
+  --ok-soft:#DDEFE3; --watch-soft:#F6EACB; --act-soft:#F8DDCF; --vet-soft:#F6D6D3;
+  --dragon:#CF973A; --belly:#EDCB88; --dragon-dk:#7A5320; --beard-black:#1A1A17; --sand:#D9C49A;
+  --f-display:"Karantina","Heebo",system-ui,sans-serif; --f-body:"Heebo",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+  --r:14px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111512; --surface:#1A1F1B; --surface2:#232A24; --ink:#E8EBE2; --muted:#A2AA9E; --line:#2F3730;
+  --accent:#E3A93C; --accent-ink:#F2C46A; --accent-soft:#3A2D12; --basalt:#78B0A9; --basalt-soft:#1E3330;
+  --ok:#62C48E; --watch:#E6AD45; --act:#F08A55; --vet:#F3766E;
+  --ok-soft:#173224; --watch-soft:#352911; --act-soft:#3A2116; --vet-soft:#3D1A18;
+  --dragon:#C48B33; --belly:#DDB873; --dragon-dk:#4C3416; --beard-black:#050505; --sand:#5C4F35; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111512; --surface:#1A1F1B; --surface2:#232A24; --ink:#E8EBE2; --muted:#A2AA9E; --line:#2F3730;
+  --accent:#E3A93C; --accent-ink:#F2C46A; --accent-soft:#3A2D12; --basalt:#78B0A9; --basalt-soft:#1E3330;
+  --ok:#62C48E; --watch:#E6AD45; --act:#F08A55; --vet:#F3766E;
+  --ok-soft:#173224; --watch-soft:#352911; --act-soft:#3A2116; --vet-soft:#3D1A18;
+  --dragon:#C48B33; --belly:#DDB873; --dragon-dk:#4C3416; --beard-black:#050505; --sand:#5C4F35; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+img{max-width:100%}
+body{margin:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;direction:rtl;-webkit-tap-highlight-color:transparent}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.app{max-width:560px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:12px 10px}
+.brand{display:flex;align-items:center;gap:10px}
+.brand h1{font-family:var(--f-display);font-size:34px;line-height:1;margin:0;letter-spacing:.5px}
+.brand small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+.iconbtn{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center}
+.iconbtn svg{width:22px;height:22px}
+nav.tabs{position:fixed;bottom:0;left:0;right:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+nav.tabs .in{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr)}
+nav.tabs button{background:none;border:0;padding:8px 2px 10px;display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--muted);font-size:12px;min-height:56px}
+nav.tabs button svg{width:24px;height:24px}
+nav.tabs button[aria-current="page"]{color:var(--accent-ink);font-weight:700}
+nav.tabs button[aria-current="page"] svg{stroke:var(--accent)}
+main{display:flex;flex-direction:column;gap:18px;padding-block:4px 16px}
+h2{font-size:17px;margin:0;text-wrap:balance}
+h3{font-size:15px;margin:0}
+.sec{display:flex;flex-direction:column;gap:10px}
+.sec-h{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.sec-h .hint{color:var(--muted);font-size:13px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.num{font-variant-numeric:tabular-nums}
+.big{font-family:var(--f-display);font-size:40px;line-height:.9}
+.row{display:flex;align-items:center;gap:10px}
+.wrap{flex-wrap:wrap}
+.grow{flex:1;min-width:0}
+.chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:500;background:var(--surface2);color:var(--ink);white-space:nowrap}
+.chip.ok{background:var(--ok-soft);color:var(--ok)} .chip.watch{background:var(--watch-soft);color:var(--watch)}
+.chip.act{background:var(--act-soft);color:var(--act)} .chip.vet{background:var(--vet-soft);color:var(--vet)}
+.chip.acc{background:var(--accent-soft);color:var(--accent-ink)} .chip.bas{background:var(--basalt-soft);color:var(--basalt)}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block;flex:none}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:10px 14px;min-height:44px;font-weight:500}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#1D1606;font-weight:700}
+.btn.ghost{background:transparent}
+.btn.sm{min-height:36px;padding:6px 10px;font-size:13px}
+.btn.danger{color:var(--vet)}
+.seg{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.seg::-webkit-scrollbar{display:none}
+.seg button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 14px;min-height:38px;white-space:nowrap;font-size:14px}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+/* alerts */
+.alerts{display:flex;flex-direction:column;gap:8px}
+.alert{display:flex;gap:10px;align-items:flex-start;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;position:relative;overflow:hidden}
+.alert::before{content:"";position:absolute;inset-block:0;inset-inline-start:0;width:4px;background:var(--sev,var(--muted))}
+.alert.watch{--sev:var(--watch)} .alert.act{--sev:var(--act)} .alert.vet{--sev:var(--vet)} .alert.info{--sev:var(--basalt)}
+.alert b{display:block;font-size:14px}
+.alert span{font-size:13px;color:var(--muted)}
+/* dragon cards */
+.dgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+@media (max-width:360px){.dgrid{grid-template-columns:1fr}}
+.dcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column}
+.dcard .ph{aspect-ratio:16/10;max-width:100%;background:linear-gradient(180deg,var(--accent-soft),var(--surface2));position:relative;display:grid;place-items:center;overflow:hidden}
+.dcard .ph img{width:100%;height:100%;object-fit:cover}
+.dcard .ph svg{width:88%;height:auto}
+.dcard .ph .tag{position:absolute;top:8px;inset-inline-start:8px}
+.dcard .body{padding:10px 12px 12px;display:flex;flex-direction:column;gap:6px}
+.dcard .name{display:flex;align-items:baseline;justify-content:space-between;gap:6px}
+.dcard .name b{font-family:var(--f-display);font-size:30px;line-height:1}
+.stat{display:flex;justify-content:space-between;gap:6px;font-size:13px}
+.stat .k{color:var(--muted)}
+.stat .v{font-weight:500;font-variant-numeric:tabular-nums}
+.up{color:var(--ok)} .down{color:var(--vet)} .flat{color:var(--watch)}
+/* routine */
+.routine{display:flex;flex-direction:column}
+.rt{display:flex;align-items:center;gap:12px;padding:12px 2px;border-bottom:1px solid var(--line);background:none;border-inline:0;border-top:0;text-align:start;width:100%;min-height:56px}
+.rt:last-child{border-bottom:0}
+.rt .ck{width:28px;height:28px;border-radius:9px;border:2px solid var(--line);display:grid;place-items:center;flex:none}
+.rt.done .ck{background:var(--ok);border-color:var(--ok)}
+.rt.done .ck svg{stroke:var(--surface)}
+.rt .t{flex:1;min-width:0}
+.rt .t b{display:block;font-size:15px}
+.rt .t span{font-size:13px;color:var(--muted)}
+.rt .when{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.powder{display:flex;align-items:center;gap:14px;background:var(--accent-soft);border-radius:var(--r);padding:14px}
+.powder .big{color:var(--accent-ink)}
+/* quick actions */
+.qgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.qbtn{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 6px;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:13px;font-weight:500;min-height:76px}
+.qbtn svg{width:26px;height:26px;stroke:var(--basalt)}
+/* list */
+.list{display:flex;flex-direction:column}
+.li{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.li:last-child{border-bottom:0}
+.li .ic{width:34px;height:34px;border-radius:10px;background:var(--surface2);display:grid;place-items:center;flex:none}
+.li .ic svg{width:20px;height:20px;stroke:var(--basalt)}
+.li .grow b{font-size:14px;display:block}
+.li .grow span{font-size:12px;color:var(--muted)}
+/* behavior */
+.bgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.bcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:8px 8px 10px;display:flex;flex-direction:column;gap:4px;text-align:start}
+.bcard .art{background:var(--surface2);border-radius:10px;aspect-ratio:2/1.15;max-width:100%;display:grid;place-items:center;overflow:hidden}
+.bcard .art svg{width:100%;height:100%}
+.bcard b{font-size:14px;margin-top:4px}
+.bdetail{display:flex;flex-direction:column;gap:10px}
+.bdetail .art{background:var(--surface2);border-radius:12px;aspect-ratio:2/1.1;max-width:100%}
+.bdetail .art svg{width:100%;height:100%}
+.kv{display:flex;flex-direction:column;gap:2px}
+.kv .k{font-size:12px;color:var(--muted);font-weight:500;letter-spacing:.3px}
+/* forms */
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:13px;color:var(--muted);font-weight:500}
+.field input,.field select,.field textarea{border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:10px 12px;min-height:44px;width:100%}
+.fgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.fgrid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.opts{display:flex;gap:6px;flex-wrap:wrap}
+.opts button{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:8px 12px;min-height:42px;font-size:14px}
+.opts button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-ink);font-weight:700}
+.result{display:flex;flex-direction:column;gap:8px}
+.res{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
+.res:last-child{border-bottom:0}
+.res .v{font-weight:700;font-variant-numeric:tabular-nums;text-align:end}
+.note{font-size:13px;color:var(--muted)}
+.callout{border-radius:12px;padding:10px 12px;font-size:14px}
+.callout.vet{background:var(--vet-soft);color:var(--vet)} .callout.watch{background:var(--watch-soft);color:var(--watch)} .callout.ok{background:var(--ok-soft);color:var(--ok)} .callout.info{background:var(--basalt-soft);color:var(--basalt)}
+.callout b{color:inherit}
+.scroll-x{overflow-x:auto}
+table.g{border-collapse:collapse;width:100%;font-size:14px}
+table.g td{padding:9px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+table.g tr:last-child td{border-bottom:0}
+.food{display:flex;flex-wrap:wrap;gap:6px}
+.food span{border-radius:999px;padding:5px 11px;font-size:13px;background:var(--surface2)}
+.food.ok span{background:var(--ok-soft);color:var(--ok)}
+.food.watch span{background:var(--watch-soft);color:var(--watch)}
+.food.vet span{background:var(--vet-soft);color:var(--vet);text-decoration:line-through;text-decoration-thickness:1px}
+.fresh{height:8px;border-radius:99px;background:var(--surface2);overflow:hidden}
+.fresh i{display:block;height:100%;background:var(--ok);border-radius:99px}
+.chk{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);background:none;border-inline:0;border-top:0;width:100%;text-align:start;min-height:46px}
+.chk:last-child{border-bottom:0}
+.chk .bx{width:22px;height:22px;border:2px solid var(--line);border-radius:6px;display:grid;place-items:center;flex:none}
+.chk[aria-pressed="true"] .bx{background:var(--ok);border-color:var(--ok)}
+.chk[aria-pressed="true"] .bx svg{stroke:var(--surface)}
+.chk[aria-pressed="true"] .lbl{color:var(--muted);text-decoration:line-through}
+/* sheet */
+.scrim{position:fixed;inset:0;background:rgba(10,12,10,.45);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--surface);width:100%;max-width:560px;max-height:88vh;overflow:auto;border-radius:20px 20px 0 0;padding:16px max(16px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:14px}
+.sheet .grab{width:40px;height:4px;border-radius:9px;background:var(--line);align-self:center}
+.sheet-h{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.toast{position:fixed;bottom:calc(92px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;z-index:30;font-size:14px;max-width:calc(100% - 32px)}
+.banner{font-size:13px;background:var(--watch-soft);color:var(--watch);border-radius:10px;padding:8px 12px}
+.hero{position:relative;border-radius:18px;overflow:hidden;background:linear-gradient(160deg,var(--accent-soft),var(--basalt-soft));padding:16px;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;min-height:118px}
+.hero .txt{position:relative;z-index:1}
+.hero .txt .big{font-size:44px}
+.hero .bgd{position:absolute;inset-inline-end:-18px;bottom:-14px;width:62%;opacity:.95}
+.hero .bgd svg{width:100%;height:auto}
+.chart svg{width:100%;height:auto;display:block}
+.empty{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;padding:18px 8px;color:var(--muted)}
+.empty svg{width:140px}
+/* dragon art animation */
+.anim-bob .head{animation:bob 1.1s ease-in-out infinite;transform-box:fill-box;transform-origin:20% 80%}
+.anim-bob-slow .head{animation:bob 2.6s ease-in-out infinite;transform-box:fill-box;transform-origin:20% 80%}
+.anim-wave .arm{animation:wave 1.8s ease-in-out infinite;transform-box:fill-box;transform-origin:50% 0%}
+.anim-puff .beard{animation:puff 1.6s ease-in-out infinite;transform-box:fill-box;transform-origin:30% 0%}
+.anim-dig .sandp{animation:dig 1s ease-out infinite}
+.anim-breath .bodyg{animation:breath 3.5s ease-in-out infinite;transform-box:fill-box;transform-origin:50% 100%}
+.anim-zz .zz{animation:zz 2.4s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+@keyframes wave{0%,100%{transform:rotate(-95deg)}50%{transform:rotate(-55deg)}}
+@keyframes puff{0%,100%{transform:scale(1)}50%{transform:scale(1.18)}}
+@keyframes dig{0%{transform:translate(0,0);opacity:1}100%{transform:translate(-14px,-10px);opacity:0}}
+@keyframes breath{0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.03)}}
+@keyframes zz{0%,100%{opacity:.25;transform:translateY(0)}50%{opacity:1;transform:translateY(-4px)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+  <header class="top">
+    <div class="brand">
+      <div aria-hidden="true" style="width:44px" id="brandArt"></div>
+      <div><h1>פוגונה</h1><small id="subtitle">יומן החרדונים שלך</small></div>
+    </div>
+    <button class="iconbtn" id="gear" hidden data-act="settings" aria-label="הגדרות"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+  </header>
+  <main id="view" aria-live="polite"></main>
+</div>
+<nav class="tabs" aria-label="ניווט" hidden><div class="in" id="tabs"></div></nav>
+<div id="layer"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+(function(){
+"use strict";
+/* ---------------- utilities ---------------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pad = n => String(n).padStart(2,"0");
+const ymd = d => d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const today = () => ymd(new Date());
+const parseD = s => { const [y,m,d] = String(s).slice(0,10).split("-").map(Number); return new Date(y, (m||1)-1, d||1); };
+const daysSince = s => Math.floor((parseD(today()) - parseD(s)) / 864e5);
+const addDays = (s,n) => { const d = parseD(s); d.setDate(d.getDate()+n); return ymd(d); };
+const heDate = s => parseD(s).toLocaleDateString("he-IL",{day:"numeric",month:"short"});
+const heDateLong = d => d.toLocaleDateString("he-IL",{weekday:"long",day:"numeric",month:"long"});
+const uid = () => Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4);
+const monthsOld = h => { if(!h) return null; const [y,m] = h.split("-").map(Number); const n = new Date(); return (n.getFullYear()-y)*12 + (n.getMonth()+1-m); };
+const DAYS = ["ראשון","שני","שלישי","רביעי","חמישי","שישי","שבת"];
+const lsGet = k => { try { return JSON.parse(localStorage.getItem(k)); } catch(e){ return null; } };
+const lsSet = (k,v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} };
+
+const IC = {
+  today:'<path d="M4 11.5 12 5l8 6.5V20a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z"/>',
+  log:'<path d="M6 3h9l4 4v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M9 12h7M9 16h5M9 8h3"/>',
+  beh:'<path d="M3 15c3-5 7-7 11-6 2 .5 4 2 6 1-1 3-3 4-5 4l-2 4-2-3c-2 0-4 0-8 0z"/><circle cx="16.5" cy="11.5" r=".6" fill="currentColor"/>',
+  food:'<path d="M6 13c0-5 3-8 6-9 3 1 6 4 6 9a6 6 0 0 1-12 0z"/><path d="M12 4v16"/><path d="M12 10l-3-2M12 14l3-2"/>',
+  setup:'<rect x="3" y="5" width="18" height="14" rx="1.5"/><path d="M3 15h18M15 5v3M15 8a2 2 0 1 0 0 4"/>',
+  check:'<path d="M5 12.5 10 17l9-10"/>',
+  weight:'<path d="M5 20h14l-2-11H7z"/><circle cx="12" cy="6" r="2.5"/>',
+  poop:'<path d="M7 19c-2 0-3-1.3-3-2.8S5.3 13.5 7 13.5c-.5-2 .8-3.5 2.6-3.5-.2-2 1.2-3.5 3-3 1 2 4.4 2 4.4 5 1.8.3 3 1.7 3 3.3S18.7 19 17 19z"/>',
+  shed:'<path d="M5 18c2-6 5-11 14-13-1 9-6 13-12 14"/><path d="M8 15l3-3M11 17l3-4M7 12l2-1"/>',
+  note:'<path d="M4 20l1-4L16 5l3 3L8 19z"/><path d="M14 7l3 3"/>',
+  bug:'<ellipse cx="12" cy="13" rx="5" ry="6.5"/><path d="M12 6.5V19.5M7 10H3M7 14H3M17 10h4M17 14h4M9 5l-1.5-2M15 5l1.5-2"/>',
+  drop:'<path d="M12 3c3 4.5 6 7.5 6 11a6 6 0 0 1-12 0c0-3.5 3-6.5 6-11z"/>',
+  leaf:'<path d="M5 19C5 10 11 5 20 4c0 9-5 15-14 15z"/><path d="M5 19 13 11"/>',
+  sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  heart:'<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>',
+  backup:'<path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 19h16"/>',
+  cam:'<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
+  trash:'<path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13"/>',
+  x:'<path d="M6 6l12 12M18 6 6 18"/>',
+  temp:'<path d="M10 4a2 2 0 1 1 4 0v10a4 4 0 1 1-4 0z"/><path d="M12 9v7"/>'
+};
+const ico = (k, extra="") => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${extra}>${IC[k]}</svg>`;
+
+/* ---------------- dragon illustration ---------------- */
+function dragonSVG(o={}){
+  const beardFill = o.beard==="black" ? "var(--beard-black)" : (o.beard==="puff" ? "var(--dragon)" : "var(--belly)");
+  const bodyFill = o.dark ? "var(--dragon-dk)" : "var(--dragon)";
+  const tail = o.tailUp
+    ? '<path d="M56 62 C40 52 34 32 42 10 C46 30 50 48 62 68 Z" fill="'+bodyFill+'"/>'
+    : '<path d="M56 60 C40 63 22 72 3 88 C20 82 40 76 58 70 Z" fill="'+bodyFill+'"/>';
+  const jaw = o.open
+    ? '<path d="M137 60 L169 57 L166 66 Z" fill="#7a2a22"/><path d="M135 61 L166 66 C160 72 152 74 146 73 C140 71 136 67 135 61 Z" fill="'+bodyFill+'"/>'
+    : '<path d="M134 60 L168 57 C164 62 156 65 146 66 C140 66 136 64 134 60 Z" fill="'+bodyFill+'"/>';
+  const beardPath = o.beard==="puff"||o.beard==="black-puff"
+    ? 'M133 62 C141 75 156 79 165 67 C162 83 147 90 136 84 C129 78 129 69 133 62 Z'
+    : 'M136 62 C142 70 152 72 160 66 C156 74 146 80 138 76 C134 72 134 66 136 62 Z';
+  const beardSpikes = (o.beard==="puff"||o.beard==="black-puff"||o.beard==="black")
+    ? '<path d="M138 82 l-3 5 l6 -2 Z M146 86 l-2 6 l6 -4 Z M155 83 l1 6 l4 -6 Z M162 74 l4 4 l1 -6 Z" fill="'+beardFill+'"/>' : '';
+  const eye = o.eyes==="closed"
+    ? '<path d="M150.5 49.5 Q154 52 157.5 49.5" fill="none" stroke="var(--beard-black)" stroke-width="1.6" stroke-linecap="round"/>'
+    : (o.eyes==="bulge"
+        ? '<circle cx="154" cy="49" r="5" fill="var(--belly)"/><circle cx="154" cy="49" r="2.8" fill="var(--beard-black)"/>'
+        : '<circle cx="154" cy="49" r="2.7" fill="var(--beard-black)"/><circle cx="155" cy="48" r=".8" fill="#fff"/>');
+  const arm = '<g class="arm"'+(o.armUp && !o.animWave ? ' transform="rotate(-80 122 71)"':'')+'><path d="M118 70 C120 78 121 84 124 90 L133 91 C129 88 127 82 127 72 Z" fill="'+bodyFill+'"/></g>';
+  const spikes = '<g fill="'+(o.dark?"var(--beard-black)":"var(--dragon-dk)")+'" opacity=".55"><path d="M66 74 l3 -7 l3 7Z M80 76 l3 -7 l3 7Z M94 76 l3 -7 l3 7Z M108 74 l3 -7 l3 7Z"/></g>'+
+                 '<g fill="var(--dragon-dk)" opacity=".35"><circle cx="72" cy="50" r="1.6"/><circle cx="86" cy="45" r="1.6"/><circle cx="100" cy="43" r="1.6"/><circle cx="114" cy="44" r="1.6"/></g>';
+  const head = '<g class="head">'+
+      '<path d="M131 46 C141 39 156 40 166 46 C172 50 172 54 168 57 L150 60 C142 62 136 62 131 60 Z" fill="'+bodyFill+'"/>'+
+      jaw +
+      '<g class="beard"><path d="'+beardPath+'" fill="'+beardFill+'"/>'+beardSpikes+'</g>'+
+      '<path d="M140 44 l2 -6 l3 5Z M147 42 l3 -6 l2 6Z" fill="var(--dragon-dk)" opacity=".6"/>'+
+      eye + '</g>';
+  const body = '<path d="M50 62 C55 44 85 38 110 40 C125 41 134 46 138 52 C141 60 134 70 118 73 C95 77 65 76 52 70 Z" fill="'+bodyFill+'"/>'+
+               '<path d="M58 69 C80 74 104 74 124 70 C112 76 80 78 58 69 Z" fill="var(--belly)" opacity=".75"/>';
+  const back = '<path d="M62 70 C60 78 56 84 52 90 L62 91 C64 86 68 80 72 72 Z" fill="'+bodyFill+'"/>';
+  let dragon = tail + back + '<g class="bodyg">'+ body + spikes +'</g>' + arm + head;
+  let tf = "";
+  if(o.pancake) tf = 'transform="translate(-9 25) scale(1.09 .72)"';
+  if(o.surf) tf = 'transform="rotate(-50 150 92) translate(10 -6)"';
+  if(o.small) tf = 'transform="translate(30 8) scale(.8)"';
+  let extras = '';
+  if(o.ground!==false) extras += '<path d="M0 92 H200" stroke="var(--line)" stroke-width="2"/>';
+  if(o.surf) extras += '<rect x="176" y="4" width="6" height="88" rx="2" fill="var(--basalt)" opacity=".35"/><path d="M168 30 l5 3 M168 42 l5 3 M168 54 l5 3" stroke="var(--muted)" stroke-width="1.5" stroke-linecap="round"/>';
+  if(o.pancake) extras += '<path d="M10 66 l-7 0 m3 -3 l-3 3 l3 3 M190 66 l7 0 m-3 -3 l3 3 l-3 3" stroke="var(--muted)" stroke-width="1.6" fill="none" stroke-linecap="round"/>';
+  if(o.bobLines) extras += '<path d="M176 36 v-10 m-3 3 l3 -3 l3 3 M176 50 v10 m-3 -3 l3 3 l3 -3" stroke="var(--muted)" stroke-width="1.6" fill="none" stroke-linecap="round"/>';
+  if(o.sun) extras += '<g stroke="var(--accent)" stroke-width="1.6" fill="none"><circle cx="182" cy="18" r="6"/><path d="M182 6v3M182 27v3M170 18h3M191 18h3"/></g>';
+  if(o.bubbles) extras += '<g fill="none" stroke="var(--basalt)" stroke-width="1.2"><circle cx="176" cy="60" r="2.5"/><circle cx="183" cy="55" r="1.8"/><circle cx="180" cy="66" r="1.5"/></g>';
+  if(o.zz) extras += '<g class="zz" fill="var(--muted)" font-family="Heebo,sans-serif" font-weight="700"><text x="168" y="34" font-size="13">z</text><text x="178" y="24" font-size="10">z</text></g>';
+  if(o.moon) extras += '<path d="M186 12 a9 9 0 1 0 6 15 a7 7 0 1 1 -6 -15z" fill="var(--basalt)" opacity=".7"/>';
+  if(o.dig) extras += '<g class="sandp" fill="var(--sand)"><circle cx="128" cy="88" r="2.2"/><circle cx="122" cy="84" r="1.6"/><circle cx="134" cy="85" r="1.4"/></g><path d="M112 92 q14 -8 28 0" fill="var(--sand)"/>';
+  if(o.hiss) extras += '<path d="M174 54 q6 -2 10 2 M174 60 q7 1 11 6" stroke="var(--vet)" stroke-width="1.6" fill="none" stroke-linecap="round"/>';
+  if(o.armUp) extras += '<path d="M112 46 a10 10 0 1 1 6 -14" stroke="var(--muted)" stroke-width="1.4" fill="none" stroke-dasharray="2 3"/>';
+  const cls = [o.anim||""].join(" ");
+  const label = o.label ? ' role="img" aria-label="'+esc(o.label)+'"' : ' aria-hidden="true"';
+  return '<svg viewBox="0 0 200 100" class="'+cls+'"'+label+' preserveAspectRatio="xMidYMid meet">'+extras+'<g '+tf+'>'+dragon+'</g></svg>';
+}
+
+/* ---------------- content ---------------- */
+const BEHAVIORS = [
+  {id:"black-beard", n:"זקן שחור", st:"watch", art:{beard:"black"}, look:"הגרון משחיר, לפעמים עם הזקן מנופח.", mean:"לחץ או פחד, דומיננטיות (גם אצל נקבות), קור. אם זה נמשך ימים, יכול להיות סימן למחלה.", act:"לבדוק טמפרטורות, ולוודא שהוא לא רואה חרדון אחר או את ההשתקפות שלו. אם זה נמשך כמה ימים, לווטרינר."},
+  {id:"puff", n:"זקן מנופח", st:"ok", art:{beard:"puff", anim:"anim-puff"}, look:"הגרון מתרחב, בלי השחרה.", mean:"תצוגה או הגנה. קורה גם בזמן השלה, כדי למתוח את העור.", act:"לתת לו מרחב. לרוב זה עובר לבד."},
+  {id:"bob-fast", n:"הנהון מהיר", st:"ok", art:{anim:"anim-bob", bobLines:true}, look:"תנועות ראש מהירות וחדות למעלה ולמטה.", mean:"דומיננטיות או חיזור, בעיקר אצל זכרים.", act:"לחסום קשר עין עם חרדונים אחרים. לא לשכן שני זכרים יחד."},
+  {id:"bob-slow", n:"הנהון איטי", st:"ok", art:{anim:"anim-bob-slow", bobLines:true}, look:"הנהון איטי ומתון.", mean:"כניעה, לרוב של נקבה או של חרדון קטן יותר.", act:"אם יש שניים באותו חלל, לעקוב אחרי מי שנכנע. ייתכן שמציקים לו."},
+  {id:"wave", n:"נפנוף יד", st:"ok", art:{armUp:true, anim:"anim-wave", animWave:true}, look:"מרים רגל קדמית ומסובב אותה לאט.", mean:"כניעה או \"ראיתי אותך\". נפוץ אצל צעירים.", act:"שום דבר. זו תקשורת רגילה."},
+  {id:"gape", n:"פה פתוח בבאסקינג", st:"ok", art:{open:true, sun:true}, look:"יושב בחום עם פה פתוח, בשקט.", mean:"ויסות חום. זה תקין לגמרי.", act:"שום דבר, כל עוד אין ריר, בועות או נשימה כבדה."},
+  {id:"gape-resp", n:"פה פתוח עם בועות", st:"vet", art:{open:true, bubbles:true}, look:"פה פתוח מחוץ לבאסקינג, ריר או בועות מהאף או מהפה.", mean:"חשד לדלקת בדרכי הנשימה.", act:"ווטרינר זוחלים בימים הקרובים. בינתיים לבדוק חום ולחות."},
+  {id:"surf", n:"שפשוף בזכוכית", st:"watch", art:{surf:true}, look:"רץ או מגרד מול הזכוכית, עומד עליה.", mean:"רואה את ההשתקפות שלו, רעב, טרריום קטן, טמפרטורה לא נכונה, נקבה שמחפשת מקום להטיל.", act:"לבדוק קודם את הסביבה. אפשר לכסות את הזכוכית בצדדים."},
+  {id:"pancake", n:"השתטחות", st:"ok", art:{pancake:true}, look:"הגוף משתטח ונעשה רחב.", mean:"סופג חום (תקין). אם יש גם זקן שחור, זה פחד.", act:"לבדוק את ההקשר. בבאסקינג זה תקין."},
+  {id:"dark", n:"גוף כהה", st:"watch", art:{dark:true}, look:"כל הגוף כהה מהרגיל.", mean:"מתחמם בבוקר (תקין). אם זה נמשך כל היום, לחץ או מחלה.", act:"לרשום כמה זמן זה נמשך. אם זה כל היום כמה ימים, לבדוק טמפרטורות."},
+  {id:"eyes", n:"עיניים עצומות ביום", st:"watch", art:{eyes:"closed"}, look:"עוצם עיניים בזמן שהאור דלוק.", mean:"מנוחה, אור חזק מדי מקרוב, או עייפות ומחלה.", act:"לבדוק את מרחק נורת ה־UV. אם יש גם ירידה בתיאבון, לווטרינר."},
+  {id:"bulge", n:"עיניים בולטות", st:"ok", art:{eyes:"bulge"}, look:"העיניים מתנפחות החוצה לרגע.", mean:"קשור לרוב להשלה. הסיבה המדויקת לא ידועה.", act:"שום דבר, אלא אם זה קורה הרבה."},
+  {id:"dig", n:"חפירה", st:"watch", art:{dig:true}, look:"חופר במצע.", mean:"קירור, הכנה לשינה. אצל נקבה בוגרת: חיפוש מקום להטלה, גם בלי זכר.", act:"נקבה בוגרת שחופרת: להכין קופסת הטלה. אם היא מתאמצת ולא מטילה, לווטרינר."},
+  {id:"tail", n:"זנב מורם", st:"ok", art:{tailUp:true}, look:"הזנב מורם באוויר.", mean:"ערנות, ציד, חיזור, או לפני צרכים.", act:"שום דבר."},
+  {id:"hiss", n:"נשיפה", st:"watch", art:{open:true, beard:"black", hiss:true}, look:"פה פתוח עם נשיפה, לרוב עם זקן שחור.", mean:"פחד או הגנה.", act:"להפחית הרמות לכמה ימים, ולהתקרב מהצד ולא מלמעלה."},
+  {id:"lethargy", n:"עייפות וחולשה", st:"act", art:{eyes:"closed", zz:true, anim:"anim-zz"}, look:"פחות פעיל, אחיזה חלשה, שוכב הרבה.", mean:"בדרך כלל קר לו. יכול להיות גם מחלה או טפילים.", act:"לבדוק באסקינג, צד קר ו־UV. אם הכול תקין וזה נמשך, ווטרינר עם בדיקת צואה."},
+  {id:"brum", n:"שינה ממושכת", st:"vet", art:{eyes:"closed", moon:true}, look:"ישן שבועות ולא אוכל.", mean:"אצל בוגר בריא בסתיו־חורף זה יכול להיות תרדמת חורף. מתחת לגיל שנה זה לא נפוץ, ויש להתייחס לזה כחשד למחלה.", act:"מתחת לגיל שנה: ווטרינר. בוגר: בדיקת ווטרינר לפני שנותנים לו לישון."}
+];
+const ST = {ok:["תקין","ok"], watch:["לעקוב","watch"], act:["לפעול","act"], vet:["ווטרינר","vet"]};
+
+const GREENS = {
+  base:{t:"בסיס יומי", c:"ok", note:"2–3 מתחלפים בכל יום", items:["עלי קייל","דלורית מגוררת","דלעת","עלי קולרבי","אנדיב / עולש","כרוב סיני","כוסברה","זוקיני / קישוא","חסה רומית (מילוי)"]},
+  some:{t:"לפעמים", c:"watch", note:"פעם־פעמיים בשבוע", items:["פטרוזיליה","נבטי חמניה","ברוקולי","בטטה מגוררת","פלפל אדום / צהוב / כתום","גזר","שומר","כרוב לבן / אדום","ארוגולה","חובזה (בר, לא מרוסס)","כפות צבר בלי קוצים"]},
+  fruit:{t:"פינוק", c:"acc", note:"כמות קטנה, פעם בשבוע", items:["תאנה","פפאיה","מנגו","תות","אוכמניות","אגס או תפוח קלוף"]},
+  no:{t:"לא לתת", c:"vet", note:"", items:["תרד","מנגולד","עלי סלק","חמציץ","אבוקדו","בצל / בצל ירוק / שום","פטריות","לימון והדרים","עגבניה","חציל","תפוח אדמה","אייסברג"]}
+};
+const BASKET = ["עלי קייל","דלורית","עלי קולרבי / קולרבי עם עלים","כרוב סיני או אנדיב","כוסברה","זוקיני","חסה רומית","פלפל אדום"];
+
+const CHECKLIST = [
+  ["must","טרריום 120×60×60 ס״מ לפחות","בוגר צריך את המקום, וזה מה שמאפשר מפל חום."],
+  ["must","נורה משולבת (כספית) ממותג מוכר, על טיימר","הזמינה ביותר בארץ. אם משיגים צינור T5 HO 12%, הוא עוד יותר טוב."],
+  ["must","בית נורה מקרמיקה שמתאים להספק","בטיחות אש. נורות כספית מתחממות מאוד."],
+  ["must","טיימר","12 שעות אור ביום, הדלקה וכיבוי קבועים."],
+  ["must","מדחום עם חיישן + מדחום אקדח (IR)","בלי מדידה אין דרך לדעת אם מגיעים לטמפרטורות."],
+  ["must","סלע באסקינג, מחבוא בצד החם ובצד הקר","מקום להתחמם ומקום להירגע."],
+  ["must","אבקת סידן בלי D3 + מולטי־ויטמין לזוחלים","בלעדיהן העצמות נחלשות, גם עם תאורה טובה."],
+  ["rec","נורת הלוגן + טרמוסטט מעמעם","כיוונון עדין של החום בחורף. לא מחברים לעמעם את הנורה המשולבת."],
+  ["rec","גוף קרמי + טרמוסטט","רק אם החדר יורד בלילה מתחת ל־18° בערך."],
+  ["rec","מצע: אדמה בלי דשנים + חול שטוף, או אריחים","מאפשר חפירה, או ניקוי קל."],
+  ["rec","מד UV (Solarmeter 6.5)","הדרך היחידה לדעת כמה UVB באמת מגיע."],
+  ["no","נורה אדומה, סגולה או \"נורת לילה\"","חרדונים רואים אור אדום. היא מפריעה לשינה."],
+  ["no","חול סידן / חול ויטמינים","הם מלקקים אותו בכוונה, והוא עלול לגרום לחסימה."],
+  ["no","ערכת מתחילים קטנה","הטרריום קטן ונורת ה־UV שבה חלשה."],
+  ["no","נורת UVB ספירלה או קומפקטית","מעט UVB באלומה צרה."],
+  ["no","סלע חימום או משטח חימום כמקור חום עיקרי","סכנת כוויות. חרדונים מרגישים חום מלמעלה."],
+  ["no","זכוכית או פלסטיק בין הנורה לחרדון","חוסמים את ה־UVB כמעט לגמרי."]
+];
+
+const LAMPS = [
+  ["הלוגן / ליבון (Flood)","חום ואור לבאסקינג","ok","הבחירה הטובה לחום. אפשר לחבר לטרמוסטט מעמעם."],
+  ["צינור T5 HO 10–12%","UVB רחב ואמין","ok","הכי טוב ל־UVB, אבל קשה להשגה בארץ. מחליפים כל 12 חודשים."],
+  ["נורת כספית (Mercury Vapor)","חום, UVA ו־UVB ביחד","watch","הפתרון הנפוץ בארץ. טיימר בלבד, לעולם לא מעמעם. אזור ה־UV צר, והסלע צריך להיות בדיוק מתחת."],
+  ["גוף קרמי","חום בלי אור","watch","רק ללילה, ורק אם קר. תמיד עם טרמוסטט."],
+  ["UVB ספירלה / קומפקטית","מעט UVB","vet","לא מספיקה, למרות שהיא זולה ונפוצה בחנויות."],
+  ["נורה אדומה / סגולה / Night","חום עם אור צבעוני","vet","לא לקנות. החרדון רואה את האור, והשינה נפגעת. לחום בלילה יש קרמי."]
+];
+
+/* ---------------- state ---------------- */
+const S = {
+  mode:"loading", dragons:[], bulbs:[], months:{}, config:{supp:{multiDay:5, plainDay:6, d3:false}, salad:{prepared:null}, shop:{}},
+  tab: (lsGet("pg.tab")||"today"), logDragon:null, behFilter:"all", setupSeg:"calc", openBeh:null, confirmDel:null,
+  calc: Object.assign({L:120,W:60,H:60,mesh:true,depth:10,sub:"mix",lamp:"mvb",watts:80,rock:14,room:16,age:"juv"}, lsGet("pg.calc")||{}),
+  tcheck: Object.assign({bask:"",cool:"",night:"",age:"juv",lamp:"mvb"}, lsGet("pg.tcheck")||{}),
+  scan:{state:"idle", res:null, err:null}
+};
+const SB_URL="https://xexwkfccvpfnymnycbjv.supabase.co", SB_KEY="sb_publishable_67HWGFHXiJYpWzBHburzyA_98z_ZBio";
+let sb=null, user=null, photoUrls={}; const sample=null; let canImages=false;
+S.logs=[]; S.authMsg=""; S.authBusy=false;
+const allLogs = () => S.logs;
+const dLogs = (id, type) => S.logs.filter(e => (e.d===id || e.d==="both") && (!type || e.type===type));
+const dragonById = id => S.dragons.find(d=>d.id===id);
+const fromDragon = r => ({id:r.id, name:r.name, sex:r.sex||"", hatch:r.hatch||"", watch:!!r.watch, photo:r.photo_path||null, order:r.sort||0});
+const fromBulb = r => ({id:r.id, label:r.label||"", type:r.type||"MVB", watts:r.watts, installed:r.installed||"", dragon:r.dragon_id||""});
+const fromLog = r => ({id:r.id, d:r.dragon_id||"both", type:r.type, v:r.v||{}, ts:r.ts});
+const isNew = id => !id || String(id).startsWith("new");
+
+/* ---------------- persistence (Supabase) ---------------- */
+function fail(e){ console.error(e); toast("השמירה נכשלה. בדוק את החיבור ונסה שוב."); }
+async function addLog(entry){
+  const row={dragon_id: entry.d==="both"?null:entry.d, type:entry.type, v:entry.v||{}, ts: entry.ts||new Date().toISOString()};
+  const tmp=Object.assign({}, entry, {id:"tmp"+uid(), ts:row.ts}); S.logs.unshift(tmp); render();
+  const {data,error}=await sb.from("logs").insert(row).select().single();
+  if(error){ S.logs=S.logs.filter(x=>x!==tmp); render(); fail(error); throw error; }
+  Object.assign(tmp, fromLog(data)); render();
+}
+async function removeLog(id){ const prev=S.logs; S.logs=S.logs.filter(e=>e.id!==id); render(); const {error}=await sb.from("logs").delete().eq("id",id); if(error){ S.logs=prev; render(); fail(error);} }
+async function saveConfig(){ render(); const {error}=await sb.from("settings").upsert({owner:user.id, supp:S.config.supp, salad_prepared:S.config.salad.prepared||null, shop:S.config.shop||{}, updated_at:new Date().toISOString()}); if(error) fail(error); }
+async function saveDragon(d){
+  const row={name:d.name, sex:d.sex||"", hatch:d.hatch||null, watch:!!d.watch, photo_path:d.photo||null, sort:d.order||0};
+  if(isNew(d.id)){ const {data,error}=await sb.from("dragons").insert(row).select().single(); if(error){ fail(error); return null; } const nd=fromDragon(data); S.dragons.push(nd); render(); return nd; }
+  const i=S.dragons.findIndex(x=>x.id===d.id); if(i>=0) S.dragons[i]=d; render();
+  const {error}=await sb.from("dragons").update(row).eq("id",d.id); if(error) fail(error); return d;
+}
+async function saveBulb(b){
+  const row={label:b.label||"", type:b.type||"MVB", watts:b.watts||null, installed:b.installed||null, dragon_id:b.dragon||null};
+  if(isNew(b.id)){ const {data,error}=await sb.from("bulbs").insert(row).select().single(); if(error){ fail(error); return null; } const nb=fromBulb(data); S.bulbs.push(nb); render(); return nb; }
+  const i=S.bulbs.findIndex(x=>x.id===b.id); if(i>=0) S.bulbs[i]=b; render();
+  const {error}=await sb.from("bulbs").update(row).eq("id",b.id); if(error) fail(error); return b;
+}
+async function loadAll(){
+  const since=new Date(Date.now()-400*864e5).toISOString();
+  const [dr,bu,lo,se]=await Promise.all([
+    sb.from("dragons").select("*").order("sort").order("created_at"),
+    sb.from("bulbs").select("*").order("installed"),
+    sb.from("logs").select("*").gte("ts",since).order("ts",{ascending:false}).limit(5000),
+    sb.from("settings").select("*").maybeSingle()
+  ]);
+  if(dr.error||bu.error||lo.error){ S.mode="error"; render(); return; }
+  S.dragons=dr.data.map(fromDragon); S.bulbs=bu.data.map(fromBulb); S.logs=lo.data.map(fromLog);
+  if(se.data) S.config={supp:Object.assign({multiDay:5,plainDay:6,d3:false}, se.data.supp||{}), salad:{prepared:se.data.salad_prepared||null}, shop:se.data.shop||{}};
+  const paths=S.dragons.map(d=>d.photo).filter(p=>p && !photoUrls[p]);
+  if(paths.length){ const {data}=await sb.storage.from("photos").createSignedUrls(paths, 86400); (data||[]).forEach(x=>{ if(x.signedUrl) photoUrls[x.path]=x.signedUrl; }); }
+  S.mode="ready"; render();
+}
+async function boot(){
+  render();
+  if(!window.supabase){ S.mode="error"; render(); return; }
+  sb=window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true, autoRefreshToken:true, detectSessionInUrl:true}});
+  const {data}=await sb.auth.getSession(); user=data.session ? data.session.user : null;
+  sb.auth.onAuthStateChange((ev,ses)=>{ const was=user&&user.id; user=ses?ses.user:null;
+    if(user && user.id!==was){ S.mode="loading"; render(); loadAll(); }
+    if(!user){ S.mode="auth"; S.dragons=[]; S.bulbs=[]; S.logs=[]; render(); } });
+  if(user) await loadAll(); else { S.mode="auth"; render(); }
+  document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible" && user && S.mode==="ready" && !$("#layer").innerHTML) loadAll(); });
+}
+function viewAuth(){
+  return '<section class="hero" style="min-height:160px"><div class="txt"><div class="big">ברוכים הבאים</div><div class="small">יומן, שגרה ומדריך לגידול חרדונים</div></div><div class="bgd">'+dragonSVG({ground:false, anim:"anim-bob-slow"})+'</div></section>'+
+    '<section class="card" style="display:flex;flex-direction:column;gap:12px"><h2>כניסה</h2><div class="small muted">נשלח לך קישור כניסה למייל. בלי סיסמה.</div>'+
+    '<div class="field"><label for="authEmail">אימייל</label><input id="authEmail" type="email" inputmode="email" autocomplete="email" dir="ltr" placeholder="name@example.com"></div>'+
+    '<button class="btn pri" data-act="login"'+(S.authBusy?' disabled':'')+'>'+(S.authBusy?"שולח…":"שלח לי קישור כניסה")+'</button>'+
+    (S.authMsg?'<div class="callout '+(S.authMsg.startsWith("!")?"watch":"ok")+'">'+esc(S.authMsg.replace(/^!/,""))+'</div>':'')+'</section>';
+}
+
+/* ---------------- domain logic ---------------- */
+function powderFor(dateStr){
+  const wd = parseD(dateStr).getDay(); const p=S.config.supp;
+  if(wd===Number(p.multiDay)) return {k:"multi", t:"מולטי־ויטמין", s:"פעם בשבוע, במקום סידן"};
+  if(wd===Number(p.plainDay)) return {k:"none", t:"בלי אבקה", s:"יום מנוחה מתוספים"};
+  return {k:"ca", t:"סידן", s: p.d3 ? "סידן עם D3" : "סידן בלי D3"};
+}
+function weights(id){ return dLogs(id,"weight").filter(e=>e.d===id).map(e=>({date:e.ts.slice(0,10), g:Number(e.v.g)})).filter(w=>w.g>0).sort((a,b)=>a.date.localeCompare(b.date)); }
+function weightTrend(id){
+  const w = weights(id); if(!w.length) return null;
+  const last = w[w.length-1]; const peak = Math.max(...w.map(x=>x.g));
+  const ref = [...w].reverse().find(x=> daysSince(x.date) >= 12 && x!==last) || null;
+  return {last, peak, ref, delta: ref ? last.g - ref.g : null, pct: ref ? (last.g-ref.g)/ref.g*100 : null};
+}
+function lastOf(id,type){ return dLogs(id,type)[0] || null; }
+function computeAlerts(){
+  const A=[];
+  S.dragons.forEach(d=>{
+    const juv = (monthsOld(d.hatch) ?? 6) < 12;
+    const tr = weightTrend(d.id);
+    if(tr){
+      if(tr.last.g < tr.peak*0.9) A.push(["vet", d.name+": ירידה של יותר מ־10% מהשיא", "שיא "+tr.peak+" ג׳, עכשיו "+tr.last.g+" ג׳. כדאי ווטרינר זוחלים."]);
+      else if(tr.pct!==null && tr.pct <= -5) A.push(["act", d.name+": ירד במשקל", Math.abs(tr.pct).toFixed(1)+"% מאז "+heDate(tr.ref.date)+". לבדוק טמפרטורות ותיאבון."]);
+      else if(juv && tr.ref && daysSince(tr.ref.date)>=18 && tr.delta<=0) A.push(["watch", d.name+": לא עלה במשקל", "צעיר צריך לעלות בהדרגה. ממשיכים לשקול כל שבוע."]);
+      if(daysSince(tr.last.date)>=7) A.push(["info", "יום שקילה: "+d.name, "השקילה האחרונה הייתה לפני "+daysSince(tr.last.date)+" ימים."]);
+    } else A.push(["info", "שקילה ראשונה: "+d.name, "משקל מטבח בגרמים, בבוקר לפני אוכל."]);
+    const p = dLogs(d.id,"poop").filter(e=>e.d===d.id);
+    if(p.length){
+      const ds = daysSince(p[0].ts.slice(0,10));
+      if(juv && ds>=5) A.push(["act", d.name+": "+ds+" ימים בלי קקי", "אמבטיה פושרת עוזרת. אם יש נפיחות או מאמץ, ווטרינר."]);
+      else if(juv && ds>=3) A.push(["watch", d.name+": "+ds+" ימים בלי קקי", "אצל צעירים זה בדרך כלל כל יום־יומיים."]);
+      const ur = p.slice(0,2).map(e=>e.v.urate);
+      if(p[0].v.urate==="green" || p[0].v.blood) A.push(["vet", d.name+": צואה חריגה", "אוראט ירוק או דם. כדאי ווטרינר עם בדיקת צואה."]);
+      else if(ur.length===2 && ur.every(u=>u==="yellow"||u==="orange")) A.push(["watch", d.name+": אוראט צהוב פעמיים ברצף", "סימן להתייבשות. ריסוס בבוקר, סלט רטוב, אמבטיה."]);
+    }
+    const ins = dLogs(d.id,"insect").filter(e=>e.d===d.id).slice(0,3);
+    if(juv && ins.length===3 && ins.every(e=>e.v.ate==="none")) A.push(["vet", d.name+": לא אוכל חרקים 3 פעמים", "אצל צעיר זה סימן חשוב. בודקים חום, ואם זה ממשיך, לווטרינר."]);
+    const sh = dLogs(d.id,"shed").filter(e=>e.d===d.id)[0];
+    if(sh && sh.v.stage==="start" && daysSince(sh.ts.slice(0,10))<=14) A.push(["watch", d.name+" בהשלה", "לבדוק אצבעות וקצה זנב. אם נשאר עור, להשרות במים פושרים."]);
+    if(sh && sh.v.stuck && sh.v.stuck.length) A.push(["act", d.name+": עור תקוע ב"+sh.v.stuck.join(" ו"), "אמבטיה פושרת ושחרור עדין. אם הקצה כהה או דחוס, לווטרינר."]);
+    const bv = dLogs(d.id,"behavior").filter(e=>e.d===d.id && daysSince(e.ts.slice(0,10))<=3);
+    bv.forEach(e=>{ const b = BEHAVIORS.find(x=>x.id===e.v.b); if(b && b.st==="vet") A.push(["vet", d.name+": "+b.n, b.act]); });
+  });
+  S.bulbs.forEach(b=>{
+    if(!b.installed) return; const m = daysSince(b.installed)/30.4; const who = b.dragon && dragonById(b.dragon) ? " ("+dragonById(b.dragon).name+")" : "";
+    if(m>=12) A.push(["act", "להחליף נורה"+who, (b.label||"נורה")+" מותקנת "+Math.floor(m)+" חודשים. ה־UVB נחלש גם כשהיא עוד מאירה."]);
+    else if(m>=10) A.push(["watch", "החלפת נורה מתקרבת"+who, "בעוד כ־"+Math.max(0,Math.round(12-m))+" חודשים. כדאי להזמין מראש."]);
+  });
+  const sp = S.config.salad.prepared;
+  if(sp){ const age = daysSince(sp); if(age>=4) A.push(["watch","קופסת הסלט ישנה","הוכנה לפני "+age+" ימים. הזמן להכין חדשה."]); else if(age===3) A.push(["info","הסלט נגמר מחר","זמן לתכנן הכנה חדשה."]); }
+  const order = {vet:0, act:1, watch:2, info:3};
+  return A.sort((a,b)=>order[a[0]]-order[b[0]]);
+}
+function doneToday(type){ return allLogs().find(e=>e.type===type && e.ts.slice(0,10)===today()); }
+
+/* ---------------- views ---------------- */
+function render(){
+  renderTabs();
+  const v = $("#view"); const tab = S.tab;
+  let h = "";
+  const ready = S.mode==="ready";
+  document.querySelector("nav.tabs").hidden = !ready; $("#gear").hidden = !ready;
+  if(S.mode==="auth"){ v.innerHTML = viewAuth(); $("#brandArt").innerHTML = dragonSVG({ground:false}); return; }
+  if(S.mode==="loading"){ v.innerHTML = '<div class="card empty">'+dragonSVG({ground:false, anim:"anim-bob"})+'<b>טוען…</b></div>'; $("#brandArt").innerHTML = dragonSVG({ground:false}); return; }
+  if(S.mode==="error"){ v.innerHTML = '<div class="card empty"><b>אין חיבור לשרת</b><span class="small">בדוק את החיבור לאינטרנט ורענן את הדף.</span><button class="btn" onclick="location.reload()">רענון</button></div>'; return; }
+  if(tab==="today") h += viewToday();
+  else if(tab==="log") h += viewLog();
+  else if(tab==="beh") h += viewBeh();
+  else if(tab==="food") h += viewFood();
+  else if(tab==="setup") h += viewSetup();
+  v.innerHTML = h;
+  $("#brandArt").innerHTML = dragonSVG({ground:false, small:false});
+  if(tab==="setup" && S.setupSeg==="calc") drawLayout();
+}
+function renderTabs(){
+  const T=[["today","היום"],["log","יומן"],["beh","התנהגות"],["food","אוכל"],["setup","הקמה"]];
+  const ic={today:"today",log:"log",beh:"beh",food:"food",setup:"setup"};
+  $("#tabs").innerHTML = T.map(([k,t])=>'<button data-tab="'+k+'"'+(S.tab===k?' aria-current="page"':'')+'>'+ico(ic[k])+'<span>'+t+'</span></button>').join("");
+}
+
+function avatarHTML(d, cls=""){
+  if(d.photo && photoUrls[d.photo]) return '<img src="'+esc(photoUrls[d.photo])+'" alt="'+esc(d.name)+'" loading="lazy">';
+  return dragonSVG({ground:false, label:d.name, anim: d.sex==="M" ? "" : "anim-breath", beard: d.watch? "": ""});
+}
+
+function viewToday(){
+  const now = new Date(); const hr = now.getHours();
+  const greet = hr<5?"לילה טוב":hr<12?"בוקר טוב":hr<17?"צהריים טובים":hr<21?"ערב טוב":"לילה טוב";
+  const pw = powderFor(today());
+  let h = '<section class="hero"><div class="txt"><div class="small muted">'+esc(heDateLong(now))+'</div><div class="big">'+greet+'</div><div class="small">'+(S.dragons.length? esc(S.dragons.map(d=>d.name).join(" ו")) : "הוסף את החרדונים שלך בהגדרות")+'</div></div><div class="bgd">'+dragonSVG({ground:false, anim:"anim-bob-slow"})+'</div></section>';
+  if(!S.dragons.length){
+    h += '<div class="card empty">'+dragonSVG({ground:false})+'<b>עוד אין כאן חרדונים</b><span class="small">הוסף חרדון עם שם, מין וגיל משוער, ואז התחל לרשום משקל וארוחות.</span><button class="btn pri" data-act="settings">הוספת חרדון</button></div>';
+    return h;
+  }
+  const al = computeAlerts().slice(0,5);
+  if(al.length) h += '<section class="sec"><div class="sec-h"><h2>מה דורש תשומת לב</h2></div><div class="alerts">'+al.map(a=>'<div class="alert '+a[0]+'"><div><b>'+esc(a[1])+'</b><span>'+esc(a[2])+'</span></div></div>').join("")+'</div></section>';
+  h += '<section class="sec"><div class="sec-h"><h2>החרדונים</h2><span class="hint">לחץ לרישום מהיר</span></div><div class="dgrid">'+S.dragons.map(dragonCard).join("")+'</div></section>';
+  const salad = doneToday("salad"), mist = doneToday("mist"), ins = doneToday("insect");
+  h += '<section class="sec"><div class="sec-h"><h2>השגרה של היום</h2></div>'+
+    '<div class="powder"><div class="big">'+esc(pw.t)+'</div><div class="small"><b>האבקה של הערב</b><br>'+esc(pw.s)+'</div></div>'+
+    '<div class="card routine">'+
+      rtRow("salad", salad, "סלט בבוקר", "חופן לכל אחד מהקופסה, כמה טיפות מים", "06:00")+
+      rtRow("mist", mist, "ריסוס", "עליהם, לא על כל הטרריום. בבוקר, כדי שיתייבש", "בוקר")+
+      rtRow("insect", ins, "חרקים מאובקים", "דוביה בקערה עמוקה · "+pw.t+" · להוציא שאריות סלט", "17:00")+
+    '</div></section>';
+  return h;
+}
+function rtRow(type, done, t, s, when){
+  return '<button class="rt'+(done?' done':'')+'" data-act="routine" data-type="'+type+'"><span class="ck">'+(done?ico("check"):"")+'</span><span class="t"><b>'+t+'</b><span>'+esc(s)+'</span></span><span class="when">'+(done? new Date(done.ts).toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"}) : when)+'</span></button>';
+}
+function dragonCard(d){
+  const tr = weightTrend(d.id); const p = dLogs(d.id,"poop").filter(e=>e.d===d.id)[0];
+  const age = monthsOld(d.hatch);
+  let wv = "—", arrow="";
+  if(tr){ wv = tr.last.g+" ג׳"; if(tr.delta!==null){ arrow = tr.delta>0 ? '<span class="up"> ▲'+tr.delta+'</span>' : tr.delta<0 ? '<span class="down"> ▼'+Math.abs(tr.delta)+'</span>' : '<span class="flat"> ●</span>'; } }
+  const uc = {white:"var(--ok)", yellow:"var(--watch)", orange:"var(--act)", green:"var(--vet)"};
+  const ul = {white:"לבן", yellow:"צהוב", orange:"כתום", green:"ירוק"};
+  const sh = dLogs(d.id,"shed").filter(e=>e.d===d.id)[0]; const shedOpen = sh && sh.v.stage==="start" && daysSince(sh.ts.slice(0,10))<=14;
+  return '<button class="dcard" data-act="quick" data-id="'+esc(d.id)+'" style="text-align:start;padding:0">'+
+    '<div class="ph">'+avatarHTML(d)+(d.watch?'<span class="chip watch tag">במעקב</span>':'')+'</div>'+
+    '<div class="body"><div class="name"><b>'+esc(d.name)+'</b><span class="small muted">'+(d.sex==="F"?"נקבה":d.sex==="M"?"זכר":"")+(age!==null?" · "+age+" חו׳":"")+'</span></div>'+
+    '<div class="stat"><span class="k">משקל</span><span class="v">'+wv+arrow+'</span></div>'+
+    '<div class="stat"><span class="k">קקי אחרון</span><span class="v">'+(p? (daysSince(p.ts.slice(0,10))===0?"היום":"לפני "+daysSince(p.ts.slice(0,10))+" ימים") : "—")+'</span></div>'+
+    '<div class="stat"><span class="k">אוראט</span><span class="v">'+(p&&p.v.urate? '<span class="dot" style="background:'+uc[p.v.urate]+'"></span> '+ul[p.v.urate] : "—")+'</span></div>'+
+    (shedOpen?'<span class="chip bas" style="align-self:flex-start">בהשלה</span>':'')+
+    '</div></button>';
+}
+
+function viewLog(){
+  if(!S.dragons.length) return '<div class="card empty">'+dragonSVG({ground:false})+'<b>אין חרדונים עדיין</b><button class="btn pri" data-act="settings">הוספת חרדון</button></div>';
+  if(!S.logDragon || !dragonById(S.logDragon)) S.logDragon = S.dragons[0].id;
+  const d = dragonById(S.logDragon);
+  let h = '<div class="seg" role="group" aria-label="בחירת חרדון">'+S.dragons.map(x=>'<button data-act="pickDragon" data-id="'+esc(x.id)+'" aria-pressed="'+(x.id===d.id)+'">'+esc(x.name)+'</button>').join("")+'</div>';
+  h += '<section class="sec"><div class="sec-h"><h2>רישום מהיר</h2><span class="hint">'+esc(d.name)+'</span></div><div class="qgrid">'+
+    [["weight","weight","משקל"],["poop","poop","קקי ואוראט"],["insect","bug","ארוחת חרקים"],["shed","shed","השלה"],["behavior","heart","התנהגות"],["note","note","הערה"]]
+      .map(([t,i,l])=>'<button class="qbtn" data-act="sheet" data-type="'+t+'" data-id="'+esc(d.id)+'">'+ico(i)+'<span>'+l+'</span></button>').join("")+'</div></section>';
+  h += '<section class="sec"><div class="sec-h"><h2>גרף משקל</h2><span class="hint">גרם</span></div><div class="card chart">'+weightChart(d.id)+'</div></section>';
+  const L = dLogs(d.id).slice(0,40);
+  h += '<section class="sec"><div class="sec-h"><h2>היסטוריה</h2><span class="hint">'+L.length+' אחרונות</span></div><div class="card list">'+(L.length? L.map(logRow).join("") : '<div class="empty small">עוד לא נרשם כלום. התחל משקילה.</div>')+'</div></section>';
+  h += '<section class="sec"><div class="row wrap"><button class="btn" data-act="vetSummary">'+'סיכום לווטרינר'+'</button><button class="btn" data-act="backup">גיבוי</button><button class="btn" data-act="restore">שחזור מגיבוי</button></div></section>';
+  return h;
+}
+function logLabel(e){
+  const ul = {white:"לבן", yellow:"צהוב", orange:"כתום", green:"ירוק"};
+  const sl = {ca:"סידן", multi:"מולטי", none:"בלי אבקה"}; const al={all:"אכל הכול", some:"אכל חלק", none:"לא אכל"};
+  switch(e.type){
+    case "weight": return ["weight", e.v.g+" ג׳", "שקילה"];
+    case "poop": return ["poop", "קקי · אוראט "+(ul[e.v.urate]||"—"), e.v.note||""];
+    case "insect": return ["bug", "חרקים · "+(al[e.v.ate]||""), sl[e.v.supp]||""];
+    case "salad": return ["leaf", "סלט הוגש", ""];
+    case "mist": return ["drop", "ריסוס", ""];
+    case "shed": return ["shed", e.v.stage==="start"?"השלה התחילה":"השלה הסתיימה", (e.v.stuck&&e.v.stuck.length)?"נשאר עור: "+e.v.stuck.join(", "):"אצבעות וזנב תקינים"];
+    case "behavior": { const b=BEHAVIORS.find(x=>x.id===e.v.b); return ["heart", b?b.n:"התנהגות", e.v.note||""]; }
+    case "note": return ["note", e.v.text||"הערה", ""];
+  }
+  return ["note", e.type, ""];
+}
+function logRow(e){
+  const [i,t,s] = logLabel(e); const when = new Date(e.ts);
+  const conf = S.confirmDel===e.id;
+  return '<div class="li"><span class="ic">'+ico(i)+'</span><div class="grow"><b>'+esc(t)+'</b><span>'+esc(heDate(e.ts))+" · "+when.toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"})+(s?" · "+esc(s):"")+(e.d==="both"?" · שניהם":"")+'</span></div>'+
+    '<button class="btn sm ghost'+(conf?' danger':'')+'" data-act="delLog" data-id="'+esc(e.id)+'" aria-label="מחיקה">'+(conf?"למחוק?":ico("trash",'style="width:18px;height:18px"'))+'</button></div>';
+}
+function weightChart(id){
+  const w = weights(id);
+  if(w.length<2) return '<div class="empty small">'+(w.length? "שקילה אחת: "+w[0].g+" ג׳. הגרף יופיע אחרי השקילה הבאה." : "אין עדיין שקילות. שוקלים פעם בשבוע, באותו יום, בבוקר.")+'</div>';
+  const W=320,H=150,P={l:34,r:12,t:12,b:24};
+  const xs = w.map(x=>parseD(x.date).getTime()); const x0=Math.min(...xs), x1=Math.max(...xs)||x0+1;
+  const gs = w.map(x=>x.g); let y0=Math.min(...gs), y1=Math.max(...gs); const padY=Math.max(5,(y1-y0)*0.2); y0=Math.floor((y0-padY)/10)*10; y1=Math.ceil((y1+padY)/10)*10;
+  const X = t => P.l + (t-x0)/(x1-x0||1)*(W-P.l-P.r); const Y = g => H-P.b - (g-y0)/(y1-y0||1)*(H-P.t-P.b);
+  let grid=""; const steps=4; for(let i=0;i<=steps;i++){ const g=y0+(y1-y0)*i/steps; const y=Y(g); grid+='<line x1="'+P.l+'" x2="'+(W-P.r)+'" y1="'+y+'" y2="'+y+'" stroke="var(--line)" stroke-width="1"/><text x="'+(P.l-6)+'" y="'+(y+4)+'" font-size="10" text-anchor="end" fill="var(--muted)" font-family="Heebo">'+Math.round(g)+'</text>'; }
+  const pts = w.map(x=>X(parseD(x.date).getTime())+","+Y(x.g));
+  const area = 'M'+pts[0]+' L'+pts.join(" L")+' L'+X(x1)+','+(H-P.b)+' L'+X(x0)+','+(H-P.b)+' Z';
+  const last = w[w.length-1];
+  const lbls = '<text x="'+X(x0)+'" y="'+(H-6)+'" font-size="10" fill="var(--muted)" text-anchor="start" font-family="Heebo">'+esc(heDate(w[0].date))+'</text><text x="'+X(x1)+'" y="'+(H-6)+'" font-size="10" fill="var(--muted)" text-anchor="end" font-family="Heebo">'+esc(heDate(last.date))+'</text>';
+  return '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="גרף משקל" style="direction:ltr">'+grid+'<path d="'+area+'" fill="var(--accent-soft)"/><polyline points="'+pts.join(" ")+'" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"/>'+
+    w.map(x=>'<circle cx="'+X(parseD(x.date).getTime())+'" cy="'+Y(x.g)+'" r="2.5" fill="var(--accent)"/>').join("")+
+    '<circle cx="'+X(x1)+'" cy="'+Y(last.g)+'" r="5" fill="var(--surface)" stroke="var(--accent)" stroke-width="2.5"/><text x="'+(X(x1)-8)+'" y="'+(Y(last.g)-9)+'" font-size="12" font-weight="700" text-anchor="end" fill="var(--ink)" font-family="Heebo">'+last.g+'</text>'+lbls+'</svg>';
+}
+
+function viewBeh(){
+  let h = '<section class="sec"><div class="card row" style="gap:14px"><div class="grow"><h2>משהו מדאיג?</h2><div class="small muted">שלוש שאלות, ואז תשובה: לעקוב, לתקן סביבה, או ווטרינר.</div></div><button class="btn pri" data-act="triage">בדיקה מהירה</button></div></section>';
+  const F=[["all","הכול"],["ok","תקין"],["watch","לעקוב"],["act","לפעול"],["vet","ווטרינר"]];
+  h += '<div class="seg" role="group" aria-label="סינון">'+F.map(([k,t])=>'<button data-act="behFilter" data-k="'+k+'" aria-pressed="'+(S.behFilter===k)+'">'+t+'</button>').join("")+'</div>';
+  const list = BEHAVIORS.filter(b=>S.behFilter==="all"||b.st===S.behFilter);
+  h += '<div class="bgrid">'+list.map(b=>'<button class="bcard" data-act="openBeh" data-id="'+b.id+'"><span class="art">'+dragonSVG(Object.assign({label:b.n}, b.art))+'</span><b>'+esc(b.n)+'</b><span class="chip '+ST[b.st][1]+'" style="align-self:flex-start">'+ST[b.st][0]+'</span></button>').join("")+'</div>';
+  h += '<p class="note">הפירושים מבוססים על ניסיון של מגדלים ומקורות כמו VCA ו־ReptiFiles. הם לא אבחנה. בכל ספק, ווטרינר זוחלים.</p>';
+  return h;
+}
+
+function viewFood(){
+  const sp = S.config.salad.prepared; let fresh="";
+  if(sp){ const age=daysSince(sp); const left=Math.max(0,4-age); const pct=Math.max(0,Math.min(100,left/4*100));
+    fresh = '<div class="row" style="justify-content:space-between"><span class="small">הוכנה '+(age===0?"היום":"לפני "+age+" ימים")+' · '+esc(heDate(sp))+'</span><span class="chip '+(left>1?"ok":left===1?"watch":"act")+'">'+(left>0?"עוד "+left+" ימים":"להכין חדשה")+'</span></div><div class="fresh"><i style="width:'+pct+'%;background:'+(left>1?"var(--ok)":left===1?"var(--watch)":"var(--act)")+'"></i></div>';
+  } else fresh = '<div class="small muted">עוד לא נרשמה הכנה. סמן כשאתה מכין קופסה.</div>';
+  let h = '<section class="sec"><div class="sec-h"><h2>קופסת הסלט</h2><span class="hint">מחזיקה 3–4 ימים</span></div><div class="card" style="display:flex;flex-direction:column;gap:10px">'+fresh+
+    '<div class="small">בערך <b>2/3 ירוקים קצוצים</b> (קייל, כרוב סיני, אנדיב, עלי קולרבי, קצת כוסברה) + <b>1/3 מגורר</b> (דלורית וזוקיני). קופסה סגורה עם נייר סופג, במקרר. אבקה רק על החרקים.</div>'+
+    '<button class="btn pri" data-act="saladPrep">הכנתי קופסה היום</button></div></section>';
+  h += '<section class="sec"><div class="sec-h"><h2>סל שבועי</h2><button class="btn sm ghost" data-act="shopClear">נקה סימונים</button></div><div class="card">'+
+    BASKET.map((it,i)=>{ const on=!!S.config.shop[i]; return '<button class="chk" data-act="shop" data-i="'+i+'" aria-pressed="'+on+'"><span class="bx">'+(on?ico("check",'style="width:16px;height:16px"'):"")+'</span><span class="lbl">'+esc(it)+'</span></button>'; }).join("")+
+    '<div class="note" style="padding-top:8px">כל המוצרים נמצאו ברמי לוי אונליין. הסל מספיק לשני צעירים לשבועיים בערך, אבל את הקייל והכוסברה כדאי לקנות שוב באמצע.</div></div></section>';
+  ["base","some","fruit","no"].forEach(k=>{ const g=GREENS[k];
+    h += '<section class="sec"><div class="sec-h"><h2>'+g.t+'</h2><span class="hint">'+g.note+'</span></div><div class="food '+(g.c==="acc"?"":g.c)+'">'+g.items.map(x=>'<span>'+esc(x)+'</span>').join("")+'</div></section>'; });
+  h += '<section class="sec"><div class="sec-h"><h2>חרקים</h2></div><div class="card small" style="display:flex;flex-direction:column;gap:6px">'+
+    '<div><b>דוביה</b> כבסיס, בקערה עמוקה וחלקה (6–8 ס״מ) כדי שלא יברחו.</div><div><b>תולעי קמח</b> רק לפעמים. הרבה שריון ויחס סידן־זרחן גרוע.</div><div><b>גודל:</b> לא רחב יותר מהמרווח בין העיניים של החרדון.</div><div><b>האכלת המושבה</b> בירקות יום־יומיים לפני, כדי שמה שהם אכלו יגיע לחרדון.</div><div><b>כמות:</b> כמה שהוא אוכל ברצון בערך 10–15 דקות. המשקל אומר אם זה מספיק.</div></div></section>';
+  return h;
+}
+
+function viewSetup(){
+  const segs=[["calc","מחשבון"],["temp","בדיקת טמפ׳"],["buy","לפני שקונים"],["lamps","נורות"]];
+  let h = '<div class="seg" role="group" aria-label="הקמה">'+segs.map(([k,t])=>'<button data-act="setupSeg" data-k="'+k+'" aria-pressed="'+(S.setupSeg===k)+'">'+t+'</button>').join("")+'</div>';
+  if(S.setupSeg==="calc") h += viewCalc();
+  if(S.setupSeg==="temp") h += viewTemp();
+  if(S.setupSeg==="buy") h += viewBuy();
+  if(S.setupSeg==="lamps") h += viewLamps();
+  if(S.setupSeg==="scan") h += viewScan();
+  return h;
+}
+function calcResult(){
+  const c=S.calc; const L=+c.L||0,W=+c.W||0,H=+c.H||0,dep=+c.depth||0,rock=+c.rock||0,watts=+c.watts||80,room=+c.room||18;
+  const dens={sand:[1.5,1.6,"חול נקי"], mix:[1.2,1.4,"אדמה + חול"], coco:[0.15,0.35,"סיבי קוקוס"]}[c.sub];
+  const liters = L*W*dep/1000; const kg0=liters*dens[0]*1.1, kg1=liters*dens[1]*1.1;
+  const back = c.age==="juv"?5:7;
+  const lampOffset = c.mesh ? 3 : -12;
+  const dist = Math.round(H - dep - rock - back + lampOffset);
+  let target, tnote;
+  if(c.lamp==="mvb"){
+    if(watts<=80){ target=[30,38]; tnote="נורות כספית עד 80W: בדרך כלל 30 ס״מ ומעלה. לפי האריזה."; }
+    else if(watts<=125){ target=[40,46]; tnote="למשל Mega-Ray 100W: כ־45 ס״מ לגב החרדון. לפי האריזה."; }
+    else { target=[46,61]; tnote="160W דורש טרריום בגובה 75 ס״מ ומעלה."; }
+  } else { target = c.mesh ? [24,30] : [37,44]; tnote = "Arcadia 12% / ReptiSun 10: כ־27 ס״מ דרך רשת, כ־40 בלי. בלי מד UV עדיף להוסיף כמה ס״מ."; }
+  const tube = L*0.5, tube2=L*0.75; const std=[55,85,115].filter(s=>s>=tube-5 && s<=tube2+5);
+  let heat = H<=60?[50,75]:H<=90?[75,100]:[100,150]; if(room<18) heat=[heat[0]+25, heat[1]+25];
+  const rockIdeal = Math.round(H - dep - back + lampOffset - (target[0]+target[1])/2);
+  const warn=[];
+  if(L<120 || W<60 || H<60) warn.push(["watch","קטן לבוגר. המינימום המקובל לחרדון בוגר הוא 120×60×60. לצעיר זה פתרון זמני."]);
+  if(dist < target[0]) warn.push(["vet","גב החרדון יהיה קרוב מדי לנורה ("+dist+" ס״מ). להנמיך את הסלע או להגביה את הנורה. זה גובר על כל שיקול חום."]);
+  else if(dist > target[1]+6) warn.push(["watch","רחוק מהנורה ("+dist+" ס״מ). ה־UVB חלש בגובה הזה. להגביה את הסלע."]);
+  else warn.push(["ok","המרחק מהנורה בטווח ("+dist+" ס״מ). עכשיו מודדים טמפרטורה בפועל."]);
+  if(c.lamp==="mvb" && H - dep < target[0]+back+5) warn.push(["vet","הטרריום נמוך מדי לנורה בהספק הזה. כדאי נורה חלשה יותר."]);
+  if(c.sub==="coco") warn.push(["watch","קוקוס מחזיק לחות. באזורים לחים כמו מישור החוף, לשמור עליו יבש או לערבב עם חול."]);
+  return {liters, kg0, kg1, dens, dist, target, tnote, std, heat, rockIdeal, warn};
+}
+function viewCalc(){
+  const c=S.calc; const r=calcResult();
+  const num=(k,l,u)=>'<div class="field"><label for="c_'+k+'">'+l+'</label><input id="c_'+k+'" type="number" inputmode="decimal" data-calc="'+k+'" value="'+esc(c[k])+'"'+(u?' aria-describedby="u_'+k+'"':'')+'></div>';
+  const opt=(k,v,l)=>'<button data-act="calcOpt" data-k="'+k+'" data-v="'+v+'" aria-pressed="'+(String(c[k])===String(v))+'">'+l+'</button>';
+  let h = '<section class="sec"><div class="sec-h"><h2>גודל הטרריום</h2><span class="hint">ס״מ</span></div><div class="card" style="display:flex;flex-direction:column;gap:12px">'+
+    '<div class="fgrid">'+num("L","אורך")+num("W","עומק")+num("H","גובה")+'</div>'+
+    '<div class="fgrid">'+num("depth","עומק מצע")+num("rock","גובה סלע")+num("room","מינ׳ בחדר °")+'</div>'+
+    '<div class="field"><label>מצע</label><div class="opts">'+opt("sub","mix","אדמה + חול")+opt("sub","sand","חול")+opt("sub","coco","קוקוס")+'</div></div>'+
+    '<div class="field"><label>תאורה</label><div class="opts">'+opt("lamp","mvb","נורה משולבת (כספית)")+opt("lamp","t5","T5 + הלוגן")+'</div></div>'+
+    (c.lamp==="mvb"?'<div class="field"><label>הספק הנורה</label><div class="opts">'+opt("watts",50,"50W")+opt("watts",80,"80W")+opt("watts",100,"100W")+opt("watts",160,"160W")+'</div></div>':'')+
+    '<div class="field"><label>תקרה</label><div class="opts">'+opt("mesh",true,"רשת, הנורה מעליה")+opt("mesh",false,"הנורה בפנים")+'</div></div>'+
+    '<div class="field"><label>גיל</label><div class="opts">'+opt("age","juv","צעיר")+opt("age","adult","בוגר")+'</div></div>'+
+    '</div></section>';
+  h += '<section class="sec"><div class="sec-h"><h2>סימולציה</h2><span class="hint">מבט חזית ומבט על, בקנה מידה</span></div><div class="card chart" id="layout"></div></section>';
+  h += '<section class="sec"><div class="sec-h"><h2>התוצאה</h2></div><div class="alerts">'+r.warn.map(w=>'<div class="alert '+(w[0]==="ok"?"info":w[0])+'"><div><b>'+esc(w[1])+'</b></div></div>').join("")+'</div><div class="card result">'+
+    '<div class="res"><span>מצע ('+r.dens[2]+')</span><span class="v">'+Math.round(r.liters)+' ליטר · '+Math.round(r.kg0)+'–'+Math.round(r.kg1)+' ק״ג</span></div>'+
+    '<div class="res"><span>שקיות של 10 ק״ג</span><span class="v">'+Math.ceil(r.kg1/10)+'</span></div>'+
+    '<div class="res"><span>מרחק נורה → גב החרדון</span><span class="v">'+r.dist+' ס״מ (יעד '+r.target[0]+'–'+r.target[1]+')</span></div>'+
+    '<div class="res"><span>גובה סלע מומלץ</span><span class="v">~'+Math.max(0,r.rockIdeal)+' ס״מ</span></div>'+
+    (c.lamp==="t5"?'<div class="res"><span>אורך צינור UVB</span><span class="v">'+(r.std.length? r.std.join(" / ")+" ס״מ" : Math.round(+c.L*0.5)+"–"+Math.round(+c.L*0.75)+" ס״מ")+'</span></div>':'')+
+    '<div class="res"><span>'+(c.lamp==="mvb"?"הלוגן לכיוונון בחורף":"נורת באסקינג (הלוגן)")+'</span><span class="v">'+r.heat[0]+'–'+r.heat[1]+'W, ואז למדוד</span></div>'+
+    '</div><p class="note">'+esc(r.tnote)+' צפיפות המצע וההספק הם הערכה גסה. המספרים שקובעים הם מה שמדחום ה־IR מראה.</p></section>';
+  return h;
+}
+function drawLayout(){
+  const el = $("#layout"); if(!el) return; const c=S.calc; const r=calcResult();
+  const L=Math.max(30,+c.L||120), H=Math.max(30,+c.H||60), Wd=Math.max(20,+c.W||60), dep=Math.max(0,+c.depth||0), rock=Math.max(0,+c.rock||0);
+  const VW=340, s=(VW-20)/L; const fh=H*s, th=Wd*s; const ox=10, oy=26;
+  const X = cm => ox + (L-cm)*s; // RTL: 0 cm at right
+  const rockW = Math.min(L*0.28, 40), rockX0 = 4, lampCx = rockX0 + rockW/2;
+  const groundY = oy+fh - dep*s; const rockTop = groundY - rock*s;
+  const lampY = c.mesh ? oy-6 : oy+12*s;
+  const backY = rockTop - (c.age==="juv"?5:7)*s;
+  const distCol = r.dist < r.target[0] ? "var(--vet)" : r.dist > r.target[1]+6 ? "var(--watch)" : "var(--ok)";
+  let svg = '<svg viewBox="0 0 '+VW+' '+(oy+fh+th+70)+'" role="img" aria-label="סימולציית חלוקה" style="direction:ltr">';
+  svg += '<defs><radialGradient id="hg" cx="0.5" cy="0" r="1"><stop offset="0" stop-color="var(--act)" stop-opacity=".35"/><stop offset="1" stop-color="var(--act)" stop-opacity="0"/></radialGradient><linearGradient id="tg" x1="1" x2="0"><stop offset="0" stop-color="var(--act)" stop-opacity=".28"/><stop offset=".55" stop-color="var(--watch)" stop-opacity=".12"/><stop offset="1" stop-color="var(--basalt)" stop-opacity=".22"/></linearGradient></defs>';
+  svg += '<text x="'+(VW-10)+'" y="16" font-size="11" text-anchor="end" fill="var(--muted)" font-family="Heebo">מבט חזית · '+L+'×'+H+'</text>';
+  svg += '<rect x="'+ox+'" y="'+oy+'" width="'+(L*s)+'" height="'+fh+'" fill="var(--surface2)" stroke="var(--muted)" stroke-width="1.5"/>';
+  svg += '<ellipse cx="'+X(lampCx)+'" cy="'+(lampY+6)+'" rx="'+(rockW*s*0.9)+'" ry="'+(fh*0.75)+'" fill="url(#hg)"/>';
+  if(c.mesh) svg += '<line x1="'+ox+'" x2="'+(ox+L*s)+'" y1="'+oy+'" y2="'+oy+'" stroke="var(--muted)" stroke-width="3" stroke-dasharray="3 3"/>';
+  svg += '<rect x="'+ox+'" y="'+groundY+'" width="'+(L*s)+'" height="'+(dep*s)+'" fill="var(--sand)"/>';
+  svg += '<rect x="'+X(rockX0+rockW)+'" y="'+rockTop+'" width="'+(rockW*s)+'" height="'+(groundY-rockTop+dep*s)+'" rx="4" fill="var(--muted)" opacity=".8"/>';
+  svg += '<path d="M'+(X(rockX0+rockW*0.8))+' '+groundY+' a'+(rockW*s*0.3)+' '+(Math.min(12,rock*s*0.5))+' 0 0 1 '+(rockW*s*0.6)+' 0z" fill="var(--ink)" opacity=".55"/>';
+  svg += '<rect x="'+(X(lampCx)-12)+'" y="'+(lampY-8)+'" width="24" height="10" rx="3" fill="var(--ink)"/><path d="M'+(X(lampCx)-8)+' '+(lampY+2)+' h16 l-3 6 h-10z" fill="var(--accent)"/>';
+  svg += '<line x1="'+X(lampCx)+'" x2="'+X(lampCx)+'" y1="'+(lampY+9)+'" y2="'+backY+'" stroke="'+distCol+'" stroke-width="2" stroke-dasharray="4 3"/>';
+  svg += '<text x="'+(X(lampCx)-6)+'" y="'+((lampY+backY)/2+4)+'" font-size="12" font-weight="700" text-anchor="end" fill="'+distCol+'" font-family="Heebo">'+r.dist+' ס״מ</text>';
+  svg += '<rect x="'+(X(L-6)-0)+'" y="'+(groundY-14)+'" width="'+(Math.min(26,L*0.18)*s)+'" height="14" rx="7" fill="var(--dragon-dk)"/>';
+  svg += '<text x="'+(X(L-6)+ (Math.min(26,L*0.18)*s)/2)+'" y="'+(groundY-18)+'" font-size="10" text-anchor="middle" fill="var(--muted)" font-family="Heebo">מחבוא קר</text>';
+  svg += '<text x="'+(X(rockX0+rockW/2))+'" y="'+(rockTop-6)+'" font-size="10" text-anchor="middle" fill="var(--ink)" font-family="Heebo">באסקינג</text>';
+  const ty = oy+fh+40;
+  svg += '<text x="'+(VW-10)+'" y="'+(ty-8)+'" font-size="11" text-anchor="end" fill="var(--muted)" font-family="Heebo">מבט על · חם ← קר</text>';
+  svg += '<rect x="'+ox+'" y="'+ty+'" width="'+(L*s)+'" height="'+th+'" fill="url(#tg)" stroke="var(--muted)" stroke-width="1.5"/>';
+  svg += '<rect x="'+X(rockX0+rockW)+'" y="'+(ty+th*0.12)+'" width="'+(rockW*s)+'" height="'+(th*0.55)+'" rx="6" fill="var(--muted)" opacity=".8"/>';
+  svg += '<circle cx="'+X(lampCx)+'" cy="'+(ty+th*0.38)+'" r="'+Math.max(10,rockW*s*0.32)+'" fill="none" stroke="var(--accent)" stroke-width="2" stroke-dasharray="3 3"/>';
+  svg += '<rect x="'+X(L*0.62)+'" y="'+(ty+th*0.15)+'" width="'+(L*0.14*s)+'" height="'+(th*0.3)+'" rx="5" fill="var(--sand)" stroke="var(--muted)"/><text x="'+(X(L*0.62)+L*0.07*s)+'" y="'+(ty+th*0.15+th*0.3+12)+'" font-size="9.5" text-anchor="middle" fill="var(--muted)" font-family="Heebo">צלחת אוכל</text>';
+  svg += '<rect x="'+X(L-4)+'" y="'+(ty+th*0.1)+'" width="'+(Math.min(26,L*0.18)*s)+'" height="'+(th*0.4)+'" rx="8" fill="var(--dragon-dk)"/>';
+  svg += '<ellipse cx="'+(X(L-10))+'" cy="'+(ty+th*0.78)+'" rx="'+(9*s)+'" ry="'+(5*s)+'" fill="var(--basalt)" opacity=".7"/><text x="'+(X(L-10))+'" y="'+(ty+th+13)+'" font-size="9.5" text-anchor="middle" fill="var(--muted)" font-family="Heebo">מים</text>';
+  svg += '<text x="'+(ox+L*s/2)+'" y="'+(ty+th+13)+'" font-size="9.5" text-anchor="middle" fill="var(--muted)" font-family="Heebo">חזית</text>';
+  svg += '</svg>';
+  el.innerHTML = svg;
+}
+function viewTemp(){
+  const t=S.tcheck; const opt=(k,v,l)=>'<button data-act="tOpt" data-k="'+k+'" data-v="'+v+'" aria-pressed="'+(String(t[k])===String(v))+'">'+l+'</button>';
+  const num=(k,l)=>'<div class="field"><label for="t_'+k+'">'+l+'</label><input id="t_'+k+'" type="number" inputmode="decimal" data-t="'+k+'" value="'+esc(t[k])+'" placeholder="°"></div>';
+  let h = '<section class="sec"><div class="sec-h"><h2>מה מדדת?</h2><span class="hint">°C, אחרי 2–3 שעות הפעלה</span></div><div class="card" style="display:flex;flex-direction:column;gap:12px"><div class="fgrid">'+num("bask","משטח באסקינג")+num("cool","צד קר")+num("night","לילה")+'</div>'+
+    '<div class="field"><label>גיל</label><div class="opts">'+opt("age","juv","צעיר")+opt("age","adult","בוגר")+'</div></div>'+
+    '<div class="field"><label>נורת חום</label><div class="opts">'+opt("lamp","mvb","משולבת (כספית)")+opt("lamp","halogen","הלוגן")+'</div></div></div></section>';
+  h += '<section class="sec"><div class="sec-h"><h2>מה לעשות</h2></div><div class="alerts">'+tempAdvice().map(a=>'<div class="alert '+a[0]+'"><div><b>'+esc(a[1])+'</b><span>'+esc(a[2])+'</span></div></div>').join("")+'</div>';
+  h += '<div class="card scroll-x"><table class="g"><tr><td><b>משטח באסקינג</b></td><td class="num">42–45°</td><td class="muted small">לא מעל 50°</td></tr><tr><td><b>צד קר</b></td><td class="num">25–29°</td><td></td></tr><tr><td><b>לילה</b></td><td class="num">'+(t.age==="juv"?"18–24°":"12–24°")+'</td><td class="muted small">בלי אור</td></tr><tr><td><b>הפרש חם־קר</b></td><td class="num">12° ומעלה</td><td></td></tr></table></div><p class="note">טווחים לפי ReptiFiles. ללילה של צעיר בחרנו רף שמרני של 18°.</p></section>';
+  return h;
+}
+function tempAdvice(){
+  const t=S.tcheck; const b=parseFloat(t.bask), c=parseFloat(t.cool), n=parseFloat(t.night); const juv=t.age==="juv"; const mvb=t.lamp==="mvb";
+  const A=[];
+  if(isNaN(b)&&isNaN(c)&&isNaN(n)) return [["info","הזן מדידה","מדוד את משטח הסלע עם מדחום IR, ואת הצד הקר בגובה החרדון."]];
+  if(!isNaN(b)){
+    if(b>50) A.push(["vet","באסקינג חם מסוכן ("+b+"°)", mvb? "להגביה את הנורה או להנמיך את הסלע כבר עכשיו. אסור לעמעם נורה משולבת. אם צריך, נורה חלשה יותר." : "להגביה נורה, להנמיך סלע או לעמעם את ההלוגן כבר עכשיו."]);
+    else if(b>45) A.push(["act","באסקינג חם מדי ("+b+"°)", mvb? "להנמיך את הסלע בכ־3–5 ס״מ או להגביה את הנורה. לבדוק שהמרחק לא יוצא מטווח ה־UV. לא לחבר לעמעם." : "להנמיך את הסלע, להגביה את הנורה, או לכוון את העמעם."]);
+    else if(b>=42) A.push(["ok","באסקינג בטווח ("+b+"°)","מצוין. למדוד שוב בעונה אחרת."]);
+    else if(b>=38) A.push(["watch","באסקינג קצת נמוך ("+b+"°)", mvb? "אפשר להגביה את הסלע, אבל רק אם המרחק לנורה נשאר מעל המינימום שלה. אחרת להוסיף הלוגן על טרמוסטט מעמעם." : "להגביה את הסלע או לעבור להספק גבוה יותר."]);
+    else A.push(["act","באסקינג קר ("+b+"°)","חרדון לא מעכל טוב בחום כזה, וזה יכול להסביר עייפות. להוסיף או להחליף נורת חום, ולמדוד שוב אחרי שעה."]);
+  }
+  if(!isNaN(c)){
+    if(c>29) A.push(["watch","צד קר חם מדי ("+c+"°)","החום מפוזר מדי. להזיז את הבאסקינג לקצה, לשפר אוורור, או שהטרריום קטן."]);
+    else if(c<24) A.push(["watch","צד קר קר ("+c+"°)","בחורף אפשר להוסיף חום מעט. החדר כנראה קר."]);
+    else A.push(["ok","צד קר בטווח ("+c+"°)",""]);
+  }
+  if(!isNaN(b)&&!isNaN(c) && b-c<12) A.push(["watch","מפל החום קטן ("+(b-c).toFixed(0)+"°)","צריך הבדל של 12° לפחות כדי שיוכלו לבחור. מרכזים את החום בקצה אחד."]);
+  if(!isNaN(n)){
+    const lo = juv?18:12;
+    if(n<lo) A.push(["act","לילה קר ("+n+"°)","גוף קרמי על טרמוסטט. בלי נורה אדומה או סגולה."]);
+    else if(n>24) A.push(["watch","לילה חם ("+n+"°)","לכבות את כל החימום בלילה. הירידה בטמפרטורה בריאה."]);
+    else A.push(["ok","לילה בטווח ("+n+"°)",""]);
+  }
+  return A;
+}
+function viewBuy(){
+  const g={must:["חובה","ok"],rec:["מומלץ","watch"],no:["להימנע","vet"]};
+  let h='';
+  ["must","rec","no"].forEach(k=>{
+    h+='<section class="sec"><div class="sec-h"><h2>'+g[k][0]+'</h2></div><div class="card list">'+CHECKLIST.filter(x=>x[0]===k).map(x=>'<div class="li"><span class="chip '+g[k][1]+'">'+g[k][0]+'</span><div class="grow"><b>'+esc(x[1])+'</b><span>'+esc(x[2])+'</span></div></div>').join("")+'</div></section>';
+  });
+  h+='<section class="sec"><div class="card callout info"><b>מה המוכר ינסה למכור לך</b><br>ערכת מתחילים, נורה אדומה \"לחום בלילה\", חול סידן \"מעכל\", וספירלת UVB. את כל אלה עדיף להשאיר על המדף.</div></section>';
+  return h;
+}
+function viewLamps(){
+  let h='<section class="sec"><div class="card list">'+LAMPS.map(l=>'<div class="li" style="align-items:flex-start"><div class="grow"><b>'+esc(l[0])+'</b><span>'+esc(l[1])+' · '+esc(l[3])+'</span></div><span class="chip '+l[2]+'">'+(l[2]==="ok"?"מומלץ":l[2]==="watch"?"בתנאים":"לא")+'</span></div>').join("")+'</div></section>';
+  h+='<section class="sec"><div class="sec-h"><h2>ההרכב המומלץ בארץ</h2></div><div class="card small" style="display:flex;flex-direction:column;gap:6px"><div><b>נורה משולבת</b> על טיימר: UV וחום בסיס, במרחק שהיצרן ממליץ.</div><div><b>הלוגן</b> לידה על <b>טרמוסטט מעמעם</b>: כיוונון החום לפי העונה, בלי לזוז מהמרחק של ה־UV.</div><div><b>קרמי</b> על טרמוסטט: רק בלילות קרים.</div><div class="muted">מחליפים נורה משולבת כל 12 חודשים. היא לא מראה כשה־UVB נחלש.</div></div></section>';
+  h+='<section class="sec"><div class="card callout vet"><b>הנורה האדומה</b><br>"היא לא מפריעה להם לישון" זה לא נכון. חרדונים רואים אור אדום, והשינה שלהם נפגעת. על האריזה לחפש Night, Red, Infrared או Moonlight, ולוותר.</div></section>';
+  return h;
+}
+function viewScan(){
+  if(!sample || !canImages) return '<section class="sec"><div class="card empty">'+ico("cam",'style="width:48px;height:48px;stroke:var(--muted)"')+'<b>זיהוי מתמונה לא זמין בתצוגה הזו</b><span class="small">הוא עובד כשפותחים את האפליקציה ב־Claude. בינתיים, המדריך בלשונית "נורות" עונה על רוב השאלות.</span></div></section>';
+  const sc=S.scan; let res="";
+  if(sc.state==="busy") res='<div class="card"><b>מסתכל על האריזה…</b><div class="small muted">זה לוקח בדרך כלל כמה שניות עד חצי דקה.</div></div>';
+  if(sc.state==="err") res='<div class="card callout watch">'+esc(sc.err)+'</div>';
+  if(sc.state==="done" && sc.res){ const r=sc.res; const v={good:["מתאימה","ok"],ok:["מתאימה בתנאים","watch"],avoid:["לא מתאימה","vet"],unknown:["לא ברור","bas"]}[r.verdict]||["לא ברור","bas"];
+    res='<div class="card" style="display:flex;flex-direction:column;gap:8px"><div class="row" style="justify-content:space-between"><b>'+esc(r.name_he||"מוצר")+'</b><span class="chip '+v[1]+'">'+v[0]+'</span></div>'+
+      '<div class="res"><span>סוג</span><span class="v">'+esc(r.type_he||"—")+'</span></div><div class="res"><span>הספק</span><span class="v">'+esc(r.watts?r.watts+"W":"—")+'</span></div><div class="res"><span>UVB</span><span class="v">'+esc(r.uvb||"לא כתוב")+'</span></div>'+
+      '<div class="small">'+esc(r.reason_he||"")+'</div>'+(r.tips_he?'<div class="small muted">'+esc(r.tips_he)+'</div>':'')+'<p class="note">זיהוי אוטומטי מתמונה יכול לטעות. בנורה גנרית אי אפשר לדעת כמה UVB היא באמת נותנת.</p></div>'; }
+  return '<section class="sec"><div class="sec-h"><h2>צלם את האריזה</h2></div><div class="card" style="display:flex;flex-direction:column;gap:10px"><div class="small">צלם את הצד שכתוב עליו סוג הנורה וההספק. האפליקציה תגיד מה זה, ואם זה מתאים לחרדון.</div><div class="field"><label for="scanFile">תמונה</label><input id="scanFile" type="file" accept="image/*" capture="environment"></div><button class="btn pri" data-act="scan"'+(sc.state==="busy"?" disabled":"")+'>זהה את המוצר</button></div>'+res+'</section>';
+}
+
+/* ---------------- sheets ---------------- */
+let sheetState = {};
+function openSheet(html){ $("#layer").innerHTML = '<div class="scrim" data-act="closeSheet"><div class="sheet" role="dialog" aria-modal="true" data-stop="1"><div class="grab"></div>'+html+'</div></div>'; const f=$("#layer .sheet input, #layer .sheet button.pri"); if(f) setTimeout(()=>f.focus(),30); }
+function closeSheet(){ $("#layer").innerHTML=""; sheetState={}; }
+function sheetHead(t){ return '<div class="sheet-h"><h2>'+t+'</h2><button class="iconbtn" data-act="closeSheet" aria-label="סגירה">'+ico("x")+'</button></div>'; }
+function optsHTML(name, list, cur){ return '<div class="opts" data-opts="'+name+'">'+list.map(([v,l])=>'<button data-act="sopt" data-name="'+name+'" data-v="'+v+'" aria-pressed="'+(String(cur)===String(v))+'">'+l+'</button>').join("")+'</div>'; }
+function sheetFor(type, did){
+  const d = dragonById(did); sheetState={type, did};
+  if(type==="weight"){ const tr=weightTrend(did); openSheet(sheetHead("שקילה · "+esc(d.name))+'<div class="field"><label for="sw">משקל בגרם</label><input id="sw" type="number" inputmode="decimal" placeholder="'+(tr?tr.last.g:"")+'"></div><div class="note">באותו יום בשבוע, בבוקר, לפני אוכל.</div><button class="btn pri" data-act="saveSheet">שמירה</button>'); }
+  if(type==="poop"){ sheetState.urate="white"; openSheet(sheetHead("קקי · "+esc(d.name))+'<div class="field"><label>צבע האוראט (החלק הלבן)</label>'+optsHTML("urate",[["white","לבן ורך"],["yellow","צהוב"],["orange","כתום / קשה"],["green","ירוק"]],"white")+'</div><div class="field"><label for="sn">הערה</label><input id="sn" placeholder="למשל: חול בצואה, נוזלי, ריח חריף"></div><button class="btn pri" data-act="saveSheet">שמירה</button>'); }
+  if(type==="insect"){ sheetState.ate="all"; sheetState.supp=powderFor(today()).k; openSheet(sheetHead("ארוחת חרקים · "+esc(d.name))+'<div class="field"><label>כמה אכל</label>'+optsHTML("ate",[["all","הכול"],["some","חלק"],["none","לא אכל"]],"all")+'</div><div class="field"><label>אבקה</label>'+optsHTML("supp",[["ca","סידן"],["multi","מולטי־ויטמין"],["none","בלי"]],sheetState.supp)+'</div><button class="btn pri" data-act="saveSheet">שמירה</button>'); }
+  if(type==="shed"){ sheetState.stage="start"; sheetState.stuck=[]; openSheet(sheetHead("השלה · "+esc(d.name))+'<div class="field"><label>שלב</label>'+optsHTML("stage",[["start","התחילה"],["end","הסתיימה"]],"start")+'</div><div class="field"><label>נשאר עור תקוע?</label><div class="opts">'+[["אצבעות","אצבעות"],["קצה הזנב","קצה הזנב"]].map(([v,l])=>'<button data-act="stuck" data-v="'+v+'" aria-pressed="false">'+l+'</button>').join("")+'</div></div><div class="note">לא לקלף בכוח. אמבטיה פושרת וריסוס בבוקר עוזרים לעור לרדת לבד.</div><button class="btn pri" data-act="saveSheet">שמירה</button>'); }
+  if(type==="note"){ openSheet(sheetHead("הערה · "+esc(d.name))+'<div class="field"><label for="st">מה קרה</label><textarea id="st" rows="3"></textarea></div><button class="btn pri" data-act="saveSheet">שמירה</button>'); }
+  if(type==="behavior"){ openSheet(sheetHead("איזו התנהגות? · "+esc(d.name))+'<div class="bgrid">'+BEHAVIORS.map(b=>'<button class="bcard" data-act="logBeh" data-b="'+b.id+'" data-id="'+esc(did)+'"><span class="art">'+dragonSVG(Object.assign({label:b.n},b.art))+'</span><b>'+esc(b.n)+'</b><span class="chip '+ST[b.st][1]+'" style="align-self:flex-start">'+ST[b.st][0]+'</span></button>').join("")+'</div>'); }
+}
+async function saveSheet(){
+  const {type, did} = sheetState; let v=null;
+  if(type==="weight"){ const g=parseFloat($("#sw").value); if(!(g>0)){ toast("הזן משקל בגרם"); return; } v={g:Math.round(g*10)/10}; }
+  if(type==="poop") v={urate:sheetState.urate, note:($("#sn").value||"").trim()};
+  if(type==="insect") v={ate:sheetState.ate, supp:sheetState.supp};
+  if(type==="shed") v={stage:sheetState.stage, stuck:sheetState.stuck};
+  if(type==="note"){ const t=($("#st").value||"").trim(); if(!t){ toast("כתוב משהו"); return; } v={text:t}; }
+  closeSheet(); try{ await addLog({d:did, type, v}); toast("נשמר"); }catch(e){}
+}
+function routineSheet(type){
+  if(type==="insect"){
+    const pw=powderFor(today()); sheetState={type:"routineInsect", supp:pw.k, ate:{}}; S.dragons.forEach(d=>sheetState.ate[d.id]="all");
+    openSheet(sheetHead("ארוחת ערב")+'<div class="small">אבקה של היום: <b>'+esc(pw.t)+'</b></div>'+optsHTML("supp",[["ca","סידן"],["multi","מולטי־ויטמין"],["none","בלי"]],pw.k)+
+      S.dragons.map(d=>'<div class="field"><label>'+esc(d.name)+'</label><div class="opts">'+[["all","הכול"],["some","חלק"],["none","לא אכל"]].map(([v,l])=>'<button data-act="ateFor" data-id="'+esc(d.id)+'" data-v="'+v+'" aria-pressed="'+(v==="all")+'">'+l+'</button>').join("")+'</div></div>').join("")+
+      '<button class="btn pri" data-act="saveRoutineInsect">שמירה</button>');
+  } else { addLog({d:"both", type, v:{}}).then(()=>toast(type==="salad"?"סלט סומן":"ריסוס סומן")).catch(()=>{}); }
+}
+function triage(step=0){
+  const Q=[
+    ["האם זה קורה עכשיו ונראה חירום?","פרכוסים, לא מצליח לעמוד או להרים את הגוף, דימום, צניחה של איבר, התנשמות, פציעה."],
+    ["יש סימן אזהרה?","נפיחות בלסת או בגפיים, רעידות, פצעים או ריר בפה, הפרשות מהאף, ירידה של 10% במשקל, צעיר שלא אוכל 3 ימים."],
+    ["הסביבה לא בטווח?","באסקינג מתחת ל־42° או מעל 45°, נורת UV בת יותר משנה, אין אבקת סידן, לא שותה (אוראט צהוב)."]
+  ];
+  const R=[["vet","ווטרינר זוחלים היום","זה מצב דחוף. לפנות היום לווטרינר זוחלים או אקזוטיים."],["vet","ווטרינר זוחלים בימים הקרובים","לקבוע תור. בינתיים להמשיך לרשום משקל, אוכל וצואה, ולהביא את הסיכום מהיומן."],["watch","לתקן את הסביבה ולבדוק שוב בעוד 3–7 ימים","רוב הבעיות מתחילות בחום או ב־UV. אם אין שיפור, לחזור לשאלה השנייה."],["ok","לעקוב","לרשום כל יום ביומן. אם זה נמשך יותר משבוע או מחמיר, ווטרינר."]];
+  if(step<3){ openSheet(sheetHead("בדיקה מהירה · "+(step+1)+"/3")+'<h3>'+Q[step][0]+'</h3><div class="small muted">'+Q[step][1]+'</div><div class="row"><button class="btn pri grow" data-act="triage" data-step="r'+step+'">כן</button><button class="btn grow" data-act="triage" data-step="'+(step+1)+'">לא</button></div>'); }
+  else showTriage(R[3]);
+}
+function showTriage(r){ openSheet(sheetHead("התוצאה")+'<div class="callout '+r[0]+'"><b>'+r[1]+'</b><br>'+r[2]+'</div><p class="note">זו לא אבחנה. בכל ספק, ווטרינר זוחלים.</p><button class="btn" data-act="closeSheet">סגירה</button>'); }
+
+function settingsSheet(){
+  const dr = S.dragons.map(d=>'<div class="card" style="display:flex;flex-direction:column;gap:8px" data-drag="'+esc(d.id)+'">'+
+    '<div class="fgrid2"><div class="field"><label>שם</label><input data-df="name" value="'+esc(d.name)+'"></div><div class="field"><label>חודש בקיעה משוער</label><input type="month" data-df="hatch" value="'+esc(d.hatch||"")+'"></div></div>'+
+    '<div class="row wrap"><div class="opts">'+[["F","נקבה"],["M","זכר"],["","לא ידוע"]].map(([v,l])=>'<button data-act="dSex" data-id="'+esc(d.id)+'" data-v="'+v+'" aria-pressed="'+((d.sex||"")===v)+'">'+l+'</button>').join("")+'</div><button class="btn sm" data-act="dWatch" data-id="'+esc(d.id)+'" aria-pressed="'+!!d.watch+'">'+(d.watch?"במעקב ✓":"סמן למעקב")+'</button></div>'+
+    (true?'<div class="row"><label class="btn sm" for="ph_'+esc(d.id)+'">'+(d.photo?"החלף תמונה":"הוסף תמונה")+'</label><input hidden id="ph_'+esc(d.id)+'" type="file" accept="image/*" data-photo="'+esc(d.id)+'"></div>':'')+
+    '<div class="row"><button class="btn sm pri" data-act="dSave" data-id="'+esc(d.id)+'">שמירה</button></div></div>').join("");
+  const bl = S.bulbs.map(b=>'<div class="card" style="display:flex;flex-direction:column;gap:8px" data-bulb="'+esc(b.id)+'"><div class="fgrid2"><div class="field"><label>שם</label><input data-bf="label" value="'+esc(b.label||"")+'"></div><div class="field"><label>הותקנה</label><input type="date" data-bf="installed" value="'+esc(b.installed||"")+'"></div></div>'+
+    '<div class="fgrid2"><div class="field"><label>אצל</label><select data-bf="dragon"><option value="">לא שויך</option>'+S.dragons.map(d=>'<option value="'+esc(d.id)+'"'+(b.dragon===d.id?" selected":"")+'>'+esc(d.name)+'</option>').join("")+'</select></div><div class="field"><label>הספק (W)</label><input type="number" data-bf="watts" value="'+esc(b.watts||"")+'"></div></div>'+
+    '<div class="row"><button class="btn sm pri" data-act="bSave" data-id="'+esc(b.id)+'">שמירה</button><span class="small muted">'+(b.installed? "מותקנת "+Math.floor(daysSince(b.installed)/30.4)+" חודשים":"")+'</span></div></div>').join("");
+  const p=S.config.supp;
+  openSheet(sheetHead("הגדרות")+
+    '<h3>חרדונים</h3>'+dr+'<button class="btn" data-act="addDragon">+ חרדון</button>'+
+    '<h3>נורות</h3>'+(bl||'<div class="small muted">עוד לא נרשמו נורות.</div>')+'<button class="btn" data-act="addBulb">+ נורה</button>'+
+    '<h3>תוספים</h3><div class="card" style="display:flex;flex-direction:column;gap:10px"><div class="field"><label>יום מולטי־ויטמין</label>'+optsHTML("multiDay",DAYS.map((d,i)=>[i,d]),p.multiDay)+'</div><div class="field"><label>יום בלי אבקה</label>'+optsHTML("plainDay",DAYS.map((d,i)=>[i,d]).concat([[-1,"אין"]]),p.plainDay)+'</div>'+
+    '<button class="btn sm" data-act="d3" aria-pressed="'+!!p.d3+'">'+(p.d3?"סידן עם D3 ✓":"סידן בלי D3")+'</button><div class="note">עם נורת UV תקינה, הרבה מגדלים מוותרים על D3. אחרים נותנים D3 פעם־פעמיים בשבוע. זה נושא שנוי במחלוקת, אפשר לשאול את הווטרינר.</div></div>'+
+    '<h3>חשבון</h3><div class="card row" style="justify-content:space-between"><span class="small muted" dir="ltr">'+esc(user&&user.email||"")+'</span><button class="btn sm danger" data-act="logout">יציאה</button></div>');
+}
+
+function vetSummary(){
+  const lines=["סיכום לווטרינר · "+heDateLong(new Date()),""];
+  S.dragons.forEach(d=>{
+    const age=monthsOld(d.hatch); lines.push(d.name+" ("+(d.sex==="F"?"נקבה":d.sex==="M"?"זכר":"")+(age!==null?", בערך "+age+" חודשים":"")+")");
+    const w=weights(d.id).filter(x=>daysSince(x.date)<=60); lines.push("  משקלים: "+(w.length? w.map(x=>heDate(x.date)+" "+x.g+"ג׳").join(" · ") : "אין"));
+    const L=dLogs(d.id).filter(e=>daysSince(e.ts.slice(0,10))<=30);
+    const ins=L.filter(e=>e.type==="insect"&&e.d===d.id); lines.push("  ארוחות חרקים ב־30 יום: "+ins.length+" (לא אכל: "+ins.filter(e=>e.v.ate==="none").length+")");
+    const pp=L.filter(e=>e.type==="poop"&&e.d===d.id); lines.push("  צואה ב־30 יום: "+pp.length+(pp[0]?" · אחרונה "+heDate(pp[0].ts)+" אוראט "+({white:"לבן",yellow:"צהוב",orange:"כתום",green:"ירוק"}[pp[0].v.urate]||""):""));
+    const bh=L.filter(e=>e.type==="behavior"&&e.d===d.id).map(e=>{const b=BEHAVIORS.find(x=>x.id===e.v.b);return b?b.n:"";}); if(bh.length) lines.push("  התנהגויות: "+bh.join(", "));
+    const nt=L.filter(e=>e.type==="note"&&e.d===d.id).slice(0,5); nt.forEach(e=>lines.push("  הערה "+heDate(e.ts)+": "+e.v.text));
+    lines.push("");
+  });
+  if(S.bulbs.length) lines.push("נורות: "+S.bulbs.map(b=>(b.label||"נורה")+" "+(b.watts?b.watts+"W ":"")+"מותקנת "+(b.installed?heDate(b.installed):"")).join(" · "));
+  lines.push("תוספים: סידן "+(S.config.supp.d3?"עם":"בלי")+" D3, מולטי־ויטמין ביום "+DAYS[S.config.supp.multiDay]);
+  const txt=lines.join("\n");
+  openSheet(sheetHead("סיכום לווטרינר")+'<textarea id="vs" rows="14" style="border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--bg);width:100%;font-size:13px" readonly>'+esc(txt)+'</textarea><button class="btn pri" data-act="copyVs">העתקה</button>');
+}
+
+/* ---------------- toast ---------------- */
+let tt; function toast(m){ let el=$(".toast"); if(!el){ el=document.createElement("div"); el.className="toast"; el.setAttribute("role","status"); document.body.appendChild(el);} el.textContent=m; clearTimeout(tt); tt=setTimeout(()=>el.remove(),2200); }
+
+/* ---------------- events ---------------- */
+document.addEventListener("click", async ev=>{
+  const tabB = ev.target.closest("[data-tab]"); if(tabB){ S.tab=tabB.dataset.tab; lsSet("pg.tab",S.tab); S.confirmDel=null; render(); window.scrollTo(0,0); return; }
+  const el = ev.target.closest("[data-act]"); if(!el) return;
+  if(el.dataset.act==="closeSheet" && ev.target.closest("[data-stop]") && el.classList.contains("scrim")) return;
+  const a = el.dataset.act, id = el.dataset.id;
+  switch(a){
+    case "closeSheet": closeSheet(); break;
+    case "settings": settingsSheet(); break;
+    case "routine": routineSheet(el.dataset.type); break;
+    case "quick": S.logDragon=id; S.tab="log"; lsSet("pg.tab","log"); render(); window.scrollTo(0,0); break;
+    case "pickDragon": S.logDragon=id; S.confirmDel=null; render(); break;
+    case "sheet": sheetFor(el.dataset.type, id); break;
+    case "sopt": { const n=el.dataset.name, v=el.dataset.v; el.parentElement.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed", String(b===el)));
+      if(n==="multiDay"||n==="plainDay"){ S.config.supp[n]=Number(v); saveConfig(); } else sheetState[n]=v; break; }
+    case "stuck": { const on = el.getAttribute("aria-pressed")!=="true"; el.setAttribute("aria-pressed", String(on)); const v=el.dataset.v; sheetState.stuck = on ? [...new Set([...(sheetState.stuck||[]), v])] : (sheetState.stuck||[]).filter(x=>x!==v); break; }
+    case "ateFor": el.parentElement.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed", String(b===el))); sheetState.ate[id]=el.dataset.v; break;
+    case "saveRoutineInsect": { const st=sheetState; closeSheet(); try{ for(const d of S.dragons){ await addLog({d:d.id, type:"insect", v:{ate:st.ate[d.id]||"all", supp:st.supp}}); } toast("ארוחת ערב נרשמה"); }catch(e){} break; }
+    case "saveSheet": saveSheet(); break;
+    case "logBeh": closeSheet(); try{ await addLog({d:id, type:"behavior", v:{b:el.dataset.b}}); toast("נרשם"); }catch(e){} break;
+    case "delLog": if(S.confirmDel===id){ S.confirmDel=null; removeLog(id); } else { S.confirmDel=id; render(); } break;
+    case "behFilter": S.behFilter=el.dataset.k; render(); break;
+    case "openBeh": { const b=BEHAVIORS.find(x=>x.id===id); openSheet(sheetHead(esc(b.n))+'<div class="bdetail"><div class="art">'+dragonSVG(Object.assign({label:b.n},b.art))+'</div><span class="chip '+ST[b.st][1]+'" style="align-self:flex-start">'+ST[b.st][0]+'</span><div class="kv"><span class="k">איך זה נראה</span><span>'+esc(b.look)+'</span></div><div class="kv"><span class="k">מה זה יכול להיות</span><span>'+esc(b.mean)+'</span></div><div class="kv"><span class="k">מה לעשות</span><span>'+esc(b.act)+'</span></div>'+
+      (S.dragons.length?'<div class="row wrap">'+S.dragons.map(d=>'<button class="btn sm" data-act="logBeh" data-b="'+b.id+'" data-id="'+esc(d.id)+'">רשום אצל '+esc(d.name)+'</button>').join("")+'</div>':'')+'</div>'); break; }
+    case "triage": { const s=el.dataset.step; if(s===undefined) triage(0); else if(s.startsWith("r")){ const i=+s.slice(1); showTriage([["vet","ווטרינר זוחלים היום","זה מצב דחוף. לפנות היום לווטרינר זוחלים או אקזוטיים."],["vet","ווטרינר זוחלים בימים הקרובים","לקבוע תור. בינתיים להמשיך לרשום משקל, אוכל וצואה, ולהביא את הסיכום מהיומן."],["watch","לתקן את הסביבה ולבדוק שוב בעוד 3–7 ימים","רוב הבעיות מתחילות בחום או ב־UV. אם אין שיפור, לחזור לשאלה השנייה."]][i]); } else triage(+s); break; }
+    case "saladPrep": S.config.salad.prepared=today(); await saveConfig(); toast("קופסת סלט נרשמה"); break;
+    case "shop": { const i=el.dataset.i; S.config.shop[i]=!S.config.shop[i]; saveConfig(); break; }
+    case "shopClear": S.config.shop={}; saveConfig(); break;
+    case "setupSeg": S.setupSeg=el.dataset.k; render(); break;
+    case "calcOpt": { const k=el.dataset.k; let v=el.dataset.v; if(v==="true")v=true; else if(v==="false")v=false; else if(!isNaN(+v)&&k==="watts") v=+v; S.calc[k]=v; lsSet("pg.calc",S.calc); render(); break; }
+    case "tOpt": S.tcheck[el.dataset.k]=el.dataset.v; lsSet("pg.tcheck",S.tcheck); render(); break;
+    case "login": doLogin(); break;
+    case "logout": closeSheet(); await sb.auth.signOut(); break;
+    case "vetSummary": vetSummary(); break;
+    case "copyVs": { const t=$("#vs"); try{ await navigator.clipboard.writeText(t.value); toast("הועתק"); }catch(e){ t.select(); toast("סמן והעתק ידנית"); } break; }
+    case "backup": doBackup(); break;
+    case "restore": openSheet(sheetHead("שחזור מגיבוי")+'<div class="small">בחר את קובץ הגיבוי, או הדבק את התוכן שלו. הרשומות יתווספו לקיימות.</div><input type="file" accept="application/json,.json" id="rsFile"><textarea id="rs" rows="8" style="border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--bg);width:100%;direction:ltr"></textarea><button class="btn pri" data-act="doRestore">שחזור</button>'); break;
+    case "doRestore": doRestore(); break;
+    case "addDragon": { const d={id:"new"+uid(), name:"חרדון חדש", sex:"", hatch:"", watch:false, order:S.dragons.length+1}; await saveDragon(d); settingsSheet(); break; }
+    case "addBulb": { const b={id:"new"+uid(), label:"נורה משולבת", installed:today(), dragon:"", watts:80, type:"MVB"}; await saveBulb(b); settingsSheet(); break; }
+    case "dSex": { const d=Object.assign({},dragonById(id)); d.sex=el.dataset.v; el.parentElement.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",String(b===el))); await saveDragon(d); break; }
+    case "dWatch": { const d=Object.assign({},dragonById(id)); d.watch=!d.watch; await saveDragon(d); settingsSheet(); break; }
+    case "dSave": { const box=el.closest("[data-drag]"); const d=Object.assign({},dragonById(id)); d.name=box.querySelector('[data-df="name"]').value.trim()||d.name; d.hatch=box.querySelector('[data-df="hatch"]').value; await saveDragon(d); toast("נשמר"); break; }
+    case "bSave": { const box=el.closest("[data-bulb]"); const b=Object.assign({},S.bulbs.find(x=>x.id===id)); b.label=box.querySelector('[data-bf="label"]').value.trim(); b.installed=box.querySelector('[data-bf="installed"]').value; b.dragon=box.querySelector('[data-bf="dragon"]').value; b.watts=Number(box.querySelector('[data-bf="watts"]').value)||null; await saveBulb(b); toast("נשמר"); settingsSheet(); break; }
+    case "d3": S.config.supp.d3=!S.config.supp.d3; await saveConfig(); settingsSheet(); break;
+  }
+});
+document.addEventListener("click", ev=>{ if(ev.target.classList && ev.target.classList.contains("scrim")) closeSheet(); }, true);
+document.addEventListener("keydown", ev=>{ if(ev.key==="Escape" && $("#layer").innerHTML) closeSheet(); });
+document.addEventListener("input", ev=>{
+  const k=ev.target.dataset && ev.target.dataset.calc; if(k){ S.calc[k]=ev.target.value; lsSet("pg.calc",S.calc); refreshCalc(); return; }
+  const t=ev.target.dataset && ev.target.dataset.t; if(t){ S.tcheck[t]=ev.target.value; lsSet("pg.tcheck",S.tcheck); refreshTemp(); }
+});
+function refreshCalc(){ // keep focus: re-render only result parts
+  const focused=document.activeElement && document.activeElement.id; render(); if(focused){ const f=document.getElementById(focused); if(f){ f.focus(); const v=f.value; try{ f.setSelectionRange(v.length,v.length);}catch(e){} } }
+}
+const refreshTemp = refreshCalc;
+document.addEventListener("change", async ev=>{
+  if(ev.target.id==="rsFile" && ev.target.files[0]){ $("#rs").value = await ev.target.files[0].text(); return; }
+  const pid = ev.target.dataset && ev.target.dataset.photo; if(!pid) return;
+  const f = ev.target.files && ev.target.files[0]; if(!f) return;
+  if(f.size > 10*1024*1024){ toast("התמונה גדולה מדי (עד 10MB)"); return; }
+  toast("מעלה תמונה…");
+  const ext = (f.name.split(".").pop()||"jpg").toLowerCase().replace(/[^a-z0-9]/g,"") || "jpg";
+  const path = user.id+"/"+pid+"-"+Date.now()+"."+ext;
+  const up = await sb.storage.from("photos").upload(path, f, {contentType:f.type||"image/jpeg", upsert:true});
+  if(up.error){ toast("ההעלאה נכשלה"); return; }
+  const su = await sb.storage.from("photos").createSignedUrl(path, 86400); if(su.data) photoUrls[path]=su.data.signedUrl;
+  const d=Object.assign({},dragonById(pid)); const oldp=d.photo; d.photo=path; await saveDragon(d);
+  if(oldp) sb.storage.from("photos").remove([oldp]);
+  toast("התמונה נשמרה"); settingsSheet();
+});
+async function doLogin(){
+  const email = ($("#authEmail").value||"").trim();
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ S.authMsg="!כתובת המייל לא נראית תקינה"; render(); return; }
+  S.authBusy=true; S.authMsg=""; render();
+  const {error} = await sb.auth.signInWithOtp({email, options:{emailRedirectTo: location.origin+location.pathname}});
+  S.authBusy=false;
+  S.authMsg = error ? (error.status===429 ? "!נשלחו יותר מדי קישורים. נסה שוב בעוד כמה דקות." : "!השליחה נכשלה: "+error.message) : "שלחנו קישור ל־"+email+". פתח אותו מהמכשיר הזה.";
+  render(); const i=$("#authEmail"); if(i) i.value=email;
+}
+async function runScan(){
+  const f = $("#scanFile") && $("#scanFile").files[0]; if(!f){ toast("בחר תמונה של האריזה"); return; }
+  S.scan={state:"busy"}; render();
+  const prompt = 'You are helping a bearded dragon (Pogona vitticeps) keeper in Israel identify a reptile lamp or heat product from a photo of its packaging. Read the packaging. Reply with ONLY a JSON object: {"name_he": string (product/brand name as printed), "type": one of "mercury_vapor","t5_uvb","t8_uvb","compact_uvb","coil_uvb","halogen","incandescent","ceramic","deep_heat","red_or_night","led","not_a_lamp","unknown", "type_he": Hebrew name of the type, "watts": number or null, "uvb": string as printed (e.g. "UVB 12%") or null, "verdict": "good"|"ok"|"avoid"|"unknown", "reason_he": one or two short Hebrew sentences why, "tips_he": one short Hebrew sentence on how to use it safely (e.g. mercury vapor: timer only, never a dimming thermostat; follow the box distance) or null}. Rules: compact/coil UVB and red/night/infrared/moonlight bulbs are "avoid"; ceramic is "ok" for night heat only; mercury vapor from a known brand is "good", generic/unknown brand mercury vapor is "ok" because UVB output is unverified; T5 HO 10-14% is "good"; if you cannot read the packaging, use "unknown". Do not invent numbers that are not printed.';
+  try{ const res = await sample.json(prompt, {images:f}); S.scan={state:"done", res}; }
+  catch(e){ const m={not_granted:"צריך לאשר לאפליקציה להשתמש ב־Claude.",image_rejected:"התמונה לא נקלטה. נסה תמונה אחרת.",rate_limited:"יותר מדי בקשות. נסה שוב בעוד רגע.",invalid_json:"לא הצלחתי לקרוא את האריזה. נסה תמונה חדה יותר.",refused:"לא הצלחתי לזהות את המוצר."}; S.scan={state:"err", err:m[e&&e.code]||"הזיהוי נכשל. נסה שוב."}; if(e&&(e.code==="not_granted"||e.code==="images_unavailable")) canImages=false; }
+  render();
+}
+async function doBackup(){
+  const data = JSON.stringify({app:"pogona", v:2, at:new Date().toISOString(), dragons:S.dragons, bulbs:S.bulbs, logs:S.logs, config:S.config}, null, 1);
+  try{ const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([data],{type:"application/json"})); a.download="pogona-backup-"+today()+".json"; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },500); toast("קובץ הגיבוי ירד"); }
+  catch(e){ openSheet(sheetHead("גיבוי")+'<textarea id="vs" rows="10" readonly style="border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--bg);width:100%;direction:ltr;font-size:12px">'+esc(data)+'</textarea><button class="btn pri" data-act="copyVs">העתקה</button>'); }
+}
+async function doRestore(){
+  let j; try{ j=JSON.parse($("#rs").value); }catch(e){ toast("זה לא קובץ גיבוי תקין"); return; }
+  if(!j || j.app!=="pogona"){ toast("זה לא גיבוי של האפליקציה"); return; }
+  closeSheet(); toast("משחזר…");
+  const map={};
+  for(const d of (j.dragons||[])){ const same=S.dragons.find(x=>x.name===d.name); if(same){ map[d.id]=same.id; continue; } const nd=await saveDragon(Object.assign({}, d, {id:"new", photo:null})); if(nd) map[d.id]=nd.id; }
+  for(const b of (j.bulbs||[])){ await saveBulb(Object.assign({}, b, {id:"new", dragon: map[b.dragon]||""})); }
+  let logs = j.logs || []; if(j.months){ for(const mk in j.months) logs = logs.concat(j.months[mk].entries||[]); }
+  const rows = logs.filter(e=>e.d==="both"||map[e.d]).map(e=>({dragon_id: e.d==="both"?null:map[e.d], type:e.type, v:e.v||{}, ts:e.ts}));
+  for(let i=0;i<rows.length;i+=500){ const {error}=await sb.from("logs").insert(rows.slice(i,i+500)); if(error){ fail(error); break; } }
+  if(j.config && j.config.supp){ S.config.supp=Object.assign(S.config.supp, j.config.supp); if(j.config.salad) S.config.salad=j.config.salad; await saveConfig(); }
+  await loadAll(); toast("השחזור הסתיים");
+}
+
+boot();
+})();
+</script>
+</body>
+</html>
