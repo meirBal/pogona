@@ -69,8 +69,8 @@ async function remindersFor(hh: string, now: Date): Promise<Msg[] | null> {
     if (sp && daysBetween(sp, L.day) >= 3) out.push({ kind: "salad_box", pref: "care", title: daysBetween(sp, L.day) >= 4 ? "קופסת הסלט ישנה" : "הסלט נגמר מחר", body: "הזמן להכין קופסה חדשה: 2/3 ירוקים, 1/3 דלורית וזוקיני." });
     const col = (st.data?.colony || {}) as Record<string, unknown>;
     if (col.on) {
-      const need = [["food", "אוכל יבש"], ["water", "ירק לחות"]].filter(([k]) => { const ymd = (x: unknown) => typeof x === "string" && /^\d{4}-\d{2}-\d{2}$/.test(x) ? x : null; const v = ymd(col[k]) || ymd(col.started); return !!v && daysBetween(v, L.day) >= 3; }).map(([, l]) => l);
-      if (need.length) out.push({ kind: "colony", pref: "colony", title: "המושבה מחכה", body: `לדוביה: ${need.join(" ו")}. ירק שלא נאכל להוציא לפני שמעפש.` });
+      const need = [["food", "אוכל יבש"], ["water", "ג׳ל מים או ירק"]].filter(([k]) => { const ymd = (x: unknown) => typeof x === "string" && /^\d{4}-\d{2}-\d{2}$/.test(x) ? x : null; const v = ymd(col[k]) || ymd(col.started); return !!v && daysBetween(v, L.day) >= 3; }).map(([, l]) => l);
+      if (need.length) out.push({ kind: "colony", pref: "colony", title: "המושבה מחכה", body: `לדוביה: ${need.join(" ו")}. ירק שלא נאכל להוציא לפני שמעפיש.` });
     }
     for (const b of bu.data || []) {
       if (!b.installed) continue;
