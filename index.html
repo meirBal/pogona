@@ -190,7 +190,7 @@ table.g tr:last-child td{border-bottom:0}
 .hero{position:relative;border-radius:18px;overflow:hidden;background:linear-gradient(160deg,var(--accent-soft),var(--basalt-soft));padding:16px;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;min-height:118px}
 .hero .txt{position:relative;z-index:1}
 .hero .txt .big{font-size:44px}
-.hero .bgd{position:absolute;inset-inline-end:-18px;bottom:-14px;width:62%;opacity:.95}
+.hero .bgd{position:absolute;inset-inline-end:-18px;bottom:-14px;width:54%;opacity:.5}
 .hero .bgd svg{width:100%;height:auto}
 .chart svg{width:100%;height:auto;display:block}
 .empty{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;padding:18px 8px;color:var(--muted)}
@@ -445,6 +445,7 @@ async function loadAll(){
 async function boot(){
   render();
   if(!window.supabase){ S.mode="error"; render(); return; }
+  try{ const qs=new URLSearchParams(location.search+"&"+location.hash.replace(/^#/,"")); const ed=qs.get("error_description"); if(ed){ S.authMsg="!"+ed.replace(/\+/g," "); history.replaceState(null,"",location.pathname); } }catch(e){}
   sb=window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true, autoRefreshToken:true, detectSessionInUrl:true}});
   const {data}=await sb.auth.getSession(); user=data.session ? data.session.user : null;
   sb.auth.onAuthStateChange((ev,ses)=>{ const was=user&&user.id; user=ses?ses.user:null;
@@ -454,11 +455,14 @@ async function boot(){
   document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible" && user && S.mode==="ready" && !$("#layer").innerHTML) loadAll(); });
 }
 function viewAuth(){
+  const G='<svg viewBox="0 0 48 48" width="22" height="22" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>';
   return '<section class="hero" style="min-height:160px"><div class="txt"><div class="big">ברוכים הבאים</div><div class="small">יומן, שגרה ומדריך לגידול חרדונים</div></div><div class="bgd">'+dragonSVG({ground:false, anim:"anim-bob-slow"})+'</div></section>'+
-    '<section class="card" style="display:flex;flex-direction:column;gap:12px"><h2>כניסה</h2><div class="small muted">נשלח לך קישור כניסה למייל. בלי סיסמה.</div>'+
+    '<section class="card" style="display:flex;flex-direction:column;gap:12px"><h2>כניסה</h2><div class="small muted">לחיצה אחת, בלי סיסמה. הנתונים שלך נשמרים בחשבון ומסתנכרנים בין הטלפון למחשב.</div>'+
+    '<button class="btn" data-act="google" style="display:flex;align-items:center;justify-content:center;gap:10px;font-weight:700;min-height:50px"'+(S.authBusy?' disabled':'')+'>'+G+'<span>'+(S.authBusy?"מעביר ל־Google…":"כניסה עם Google")+'</span></button>'+
+    (S.authMsg?'<div class="callout '+(S.authMsg.startsWith("!")?"watch":"ok")+'">'+esc(S.authMsg.replace(/^!/,""))+'</div>':'')+
+    '<details><summary class="small muted" style="cursor:pointer;min-height:32px">אין לך Google? כניסה עם קישור במייל</summary><div style="display:flex;flex-direction:column;gap:10px;margin-top:10px">'+
     '<div class="field"><label for="authEmail">אימייל</label><input id="authEmail" type="email" inputmode="email" autocomplete="email" dir="ltr" placeholder="name@example.com"></div>'+
-    '<button class="btn pri" data-act="login"'+(S.authBusy?' disabled':'')+'>'+(S.authBusy?"שולח…":"שלח לי קישור כניסה")+'</button>'+
-    (S.authMsg?'<div class="callout '+(S.authMsg.startsWith("!")?"watch":"ok")+'">'+esc(S.authMsg.replace(/^!/,""))+'</div>':'')+'</section>';
+    '<button class="btn" data-act="login">שלח לי קישור כניסה</button></div></details></section>';
 }
 
 /* ---------------- domain logic ---------------- */
@@ -942,6 +946,7 @@ document.addEventListener("click", async ev=>{
     case "calcOpt": { const k=el.dataset.k; let v=el.dataset.v; if(v==="true")v=true; else if(v==="false")v=false; else if(!isNaN(+v)&&k==="watts") v=+v; S.calc[k]=v; lsSet("pg.calc",S.calc); render(); break; }
     case "tOpt": S.tcheck[el.dataset.k]=el.dataset.v; lsSet("pg.tcheck",S.tcheck); render(); break;
     case "login": doLogin(); break;
+    case "google": { S.authBusy=true; S.authMsg=""; render(); const {error}=await sb.auth.signInWithOAuth({provider:"google", options:{redirectTo: location.origin+location.pathname}}); if(error){ S.authBusy=false; S.authMsg="!הכניסה עם Google לא הצליחה: "+error.message; render(); } break; }
     case "logout": closeSheet(); await sb.auth.signOut(); break;
     case "vetSummary": vetSummary(); break;
     case "copyVs": { const t=$("#vs"); try{ await navigator.clipboard.writeText(t.value); toast("הועתק"); }catch(e){ t.select(); toast("סמן והעתק ידנית"); } break; }
