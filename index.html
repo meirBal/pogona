@@ -425,6 +425,7 @@ const S = {
   tcheck: Object.assign({bask:"",cool:"",night:"",age:"juv",lamp:"mvb"}, lsGet("pg.tcheck")||{}),
   scan:{state:"idle", res:null, err:null}
 };
+const VAPID_PUBLIC="BPkuZ_XATibH90aGguREiF-DKJcuj27gJgInbRwsOv5pW9c4OC7V-mqY4B7hGobbHe-Ps2EtsFB1P-l5djoIxiE";
 const SB_URL="https://xexwkfccvpfnymnycbjv.supabase.co", SB_KEY="sb_publishable_67HWGFHXiJYpWzBHburzyA_98z_ZBio";
 let sb=null, user=null, photoUrls={}; const sample=null; let canImages=false;
 S.logs=[]; S.authMsg=""; S.authBusy=false; S.hh=null; S.hhs=[]; S.members=[];
@@ -501,6 +502,7 @@ async function loadAll(quiet){
   const paths=S.dragons.map(d=>d.photo).filter(p=>p && !photoUrls[p]);
   if(paths.length){ const {data}=await sb.storage.from("photos").createSignedUrls(paths, 86400); (data||[]).forEach(x=>{ if(x.signedUrl) photoUrls[x.path]=x.signedUrl; }); }
   S.mode="ready"; render();
+  if(!pushState.checked) refreshPush();
 }
 async function boot(){
   render();
@@ -981,7 +983,7 @@ function settingsSheet(){
     '<h3>נורות</h3>'+(bl||'<div class="small muted">עוד לא נרשמו נורות.</div>')+'<button class="btn" data-act="addBulb">+ נורה</button>'+
     '<h3>תוספים</h3><div class="card" style="display:flex;flex-direction:column;gap:10px"><div class="field"><label>ימי מולטי־ויטמין (על הסלט, בנוסף לסידן)</label><div class="opts">'+DAYS.map((d,i)=>'<button data-act="multiDayT" data-v="'+i+'" aria-pressed="'+multiDays().includes(i)+'">'+d+'</button>').join("")+'</div><div class="note">לפי ReptiFiles: פעמיים בשבוע עד גיל שנה ולנקבה מעוברת, פעם בשבוע לבוגר.</div></div><div class="field"><label>יום דילוג (לא חובה)</label>'+optsHTML("plainDay",DAYS.map((d,i)=>[i,d]).concat([[-1,"אין"]]),p.plainDay)+'</div>'+
     '<button class="btn sm" data-act="d3" aria-pressed="'+!!p.d3+'">'+(p.d3?"סידן עם D3 ✓":"סידן בלי D3")+'</button><div class="note">ההנחה: יש נורת UVB תקינה. במצב כזה הרבה מגדלים מוותרים על D3. אחרים נותנים D3 פעם־פעמיים בשבוע. זה נושא שנוי במחלוקת, אפשר לשאול את הווטרינר.</div></div>'+
-    householdHTML()+
+    householdHTML()+pushHTML()+
     '<h3>חשבון</h3><div class="card row" style="justify-content:space-between"><span class="small muted" dir="ltr">'+esc(user&&user.email||"")+'</span><button class="btn sm danger" data-act="logout">יציאה</button></div>');
 }
 
@@ -1023,6 +1025,63 @@ async function doInvite(){
   catch(e){ openSheet(sheetHead("קישור הזמנה")+'<div class="small">שלח את הקישור הזה לבן המשפחה:</div><input readonly dir="ltr" value="'+esc(url)+'" style="border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--bg);width:100%">'); }
 }
 
+/* ---------------- push notifications ---------------- */
+const pushSupported = () => ("serviceWorker" in navigator) && ("PushManager" in window) && ("Notification" in window);
+let pushState = {sub:null, row:null, checked:false};
+function b64ToU8(b){ const pad="=".repeat((4-b.length%4)%4); const raw=atob((b+pad).replace(/-/g,"+").replace(/_/g,"/")); return Uint8Array.from([...raw].map(c=>c.charCodeAt(0))); }
+function sameKey(sub){ try{ const k=sub.options && sub.options.applicationServerKey; if(!k) return true; const a=new Uint8Array(k), b=b64ToU8(VAPID_PUBLIC); return a.length===b.length && a.every((x,i)=>x===b[i]); }catch(e){ return true; } }
+async function saveSub(sub){ const j=sub.toJSON(); const {data,error}=await sb.from("push_subscriptions").upsert({endpoint:j.endpoint, p256dh:j.keys.p256dh, auth:j.keys.auth, household_id:S.hh, user_id:user.id}, {onConflict:"endpoint"}).select().single(); if(error) throw error; return data; }
+async function refreshPush(){
+  if(!pushSupported() || !S.hh || !user){ pushState.checked=true; return; }
+  try{ const reg=await navigator.serviceWorker.ready; pushState.sub=await reg.pushManager.getSubscription();
+    if(pushState.sub){
+      const r=await sb.from("push_subscriptions").select("*").eq("endpoint", pushState.sub.endpoint).maybeSingle(); pushState.row=r.data||null;
+      // permission still granted but our row is gone (cleaned up) or household changed: re-register silently
+      if(Notification.permission==="granted" && (!pushState.row || pushState.row.household_id!==S.hh)) pushState.row = await saveSub(pushState.sub);
+    }
+  }catch(e){ console.error(e); }
+  pushState.checked=true;
+}
+async function enablePush(){
+  if(isIOS && !standalone()){ openSheet(sheetHead("התראות באייפון")+'<div class="small">באייפון התראות עובדות רק אחרי התקנה למסך הבית: שיתוף ← <b>הוסף למסך הבית</b>, ואז לפתוח את פוגונה מהאייקון ולהפעיל כאן.</div>'); return; }
+  if(!pushSupported()){ toast("הדפדפן הזה לא תומך בהתראות"); return; }
+  const perm = await Notification.requestPermission();
+  if(perm!=="granted"){ toast(perm==="denied"?"ההתראות חסומות בהגדרות הדפדפן":"לא אושרו התראות"); return; }
+  try{
+    const reg=await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if(sub && !sameKey(sub)){ await sub.unsubscribe(); sub=null; }
+    if(!sub) sub = await reg.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:b64ToU8(VAPID_PUBLIC)});
+    const data = await saveSub(sub);
+    pushState.sub=sub; pushState.row=data; toast("ההתראות הופעלו"); if($("#layer").innerHTML) settingsSheet();
+  }catch(e){ console.error(e); toast("לא הצלחתי להפעיל התראות"); }
+}
+async function disablePush(){
+  try{ if(pushState.row) await sb.from("push_subscriptions").delete().eq("id", pushState.row.id); if(pushState.sub) await pushState.sub.unsubscribe(); }catch(e){}
+  pushState.sub=null; pushState.row=null; toast("ההתראות כובו"); if($("#layer").innerHTML) settingsSheet();
+}
+async function testPush(){
+  const {data}=await sb.auth.getSession(); const tok=data.session && data.session.access_token;
+  if(!tok){ toast("צריך להתחבר מחדש"); return; }
+  try{ const r=await fetch(SB_URL+"/functions/v1/notify",{method:"POST", headers:{"Content-Type":"application/json", "Authorization":"Bearer "+tok, "apikey":SB_KEY}, body:JSON.stringify({test:true})}); if(!r.ok){ toast("השרת דחה את הבקשה ("+r.status+")"); return; } const j=await r.json(); toast(j.sent? "נשלחה התראת בדיקה" : j.devices? "השליחה למכשיר נכשלה. נסה לכבות ולהפעיל מחדש" : "לא נמצא מכשיר רשום. הפעל התראות מחדש"); }
+  catch(e){ toast("השליחה נכשלה"); }
+}
+async function setPushPref(k){ if(!pushState.row) return; const prefs=Object.assign({salad:true,insects:true,care:true,weather:true}, pushState.row.prefs||{}); prefs[k]=prefs[k]===false; const {error}=await sb.from("push_subscriptions").update({prefs}).eq("id",pushState.row.id); if(error){ toast("השמירה נכשלה"); return; } pushState.row.prefs=prefs; settingsSheet(); }
+function pushHTML(){
+  let h='<h3>התראות</h3><div class="card" style="display:flex;flex-direction:column;gap:10px">';
+  if(isIOS && !standalone()) return h+'<div class="small">באייפון התראות עובדות רק אחרי התקנה למסך הבית: שיתוף ← <b>הוסף למסך הבית</b>, ואז לפתוח את פוגונה מהאייקון ולהפעיל כאן.</div></div>';
+  if(!pushSupported()) return h+'<div class="small muted">הדפדפן הזה לא תומך בהתראות. באנדרואיד: כרום. באייפון: אחרי התקנה למסך הבית (iOS 16.4 ומעלה).</div></div>';
+  if(!pushState.row){
+    h+='<div class="small">תזכורות לטלפון: סלט ב־06:00, חרקים ב־17:00, יום שקילה, קופסת סלט שנגמרת ונורה ישנה. אם מישהו בבית כבר סימן, ההתראה לא נשלחת.</div><button class="btn pri" data-act="pushOn">הפעלת התראות במכשיר הזה</button>';
+  } else {
+    const p=Object.assign({salad:true,insects:true,care:true,weather:true}, pushState.row.prefs||{});
+    const t=(k,l)=>'<button class="chk" data-act="pushPref" data-k="'+k+'" aria-pressed="'+(p[k]!==false)+'"><span class="bx">'+(p[k]!==false?ico("check",'style="width:16px;height:16px"'):"")+'</span><span>'+l+'</span></button>';
+    h+='<div class="small" style="color:var(--ok)">ההתראות פעילות במכשיר הזה.</div>'+t("salad","סלט בבוקר (06:00)")+t("insects","חרקים (17:00, ותזכורת ב־20:00 אם לא נרשם)")+t("care","שקילה, קופסת סלט, נורה (09:00)")+t("weather","מזג אוויר: לילה קר ושרב")+
+      '<div class="row wrap"><button class="btn sm" data-act="pushTest">שליחת התראת בדיקה</button><button class="btn sm ghost danger" data-act="pushOff">כיבוי במכשיר הזה</button></div>';
+  }
+  return h+'</div>';
+}
+
 /* ---------------- toast ---------------- */
 let tt; function toast(m){ let el=$(".toast"); if(!el){ el=document.createElement("div"); el.className="toast"; el.setAttribute("role","status"); document.body.appendChild(el);} el.textContent=m; clearTimeout(tt); tt=setTimeout(()=>el.remove(),2200); }
 
@@ -1061,12 +1120,16 @@ document.addEventListener("click", async ev=>{
     case "install": doInstall(); break;
     case "invite": doInvite(); break;
     case "vets": vetsSheet(); break;
+    case "pushOn": enablePush(); break;
+    case "pushOff": disablePush(); break;
+    case "pushTest": testPush(); break;
+    case "pushPref": setPushPref(el.dataset.k); break;
     case "saveVet": { const c=el.closest(".card"); const ph=(c.querySelector("#vPhone").value||"").trim(); if(ph && ph.replace(/\D/g,"").length<7){ toast("מספר הטלפון קצר מדי"); break; } S.config.vet={name:(c.querySelector("#vName").value||"").trim(), phone:ph, note:(c.querySelector("#vNote").value||"").trim()}; await saveConfig(); toast("נשמר"); if($("#layer").innerHTML) vetsSheet(); break; }
     case "rmMember": if(S.confirmDel==="m"+id){ S.confirmDel=null; const {error}=await sb.from("household_members").delete().eq("household_id",S.hh).eq("user_id",id); if(error) toast("ההסרה נכשלה"); else { await loadAll(true); toast("הוסר מהבית"); } settingsSheet(); } else { S.confirmDel="m"+id; settingsSheet(); } break;
     case "leaveHH": if(S.confirmDel==="leave"){ S.confirmDel=null; const {error}=await sb.from("household_members").delete().eq("household_id",S.hh).eq("user_id",user.id); if(error){ toast("לא הצלחתי לעזוב"); break; } closeSheet(); S.hh=null; lsSet("pg.hh",null); S.mode="loading"; render(); loadAll(); } else { S.confirmDel="leave"; settingsSheet(); } break;
-    case "switchHH": closeSheet(); S.hh=id; lsSet("pg.hh",id); subscribeLive(); S.mode="loading"; render(); loadAll(); break;
+    case "switchHH": closeSheet(); S.hh=id; lsSet("pg.hh",id); subscribeLive(); S.mode="loading"; render(); pushState.checked=false; loadAll(); break;
     case "google": { S.authBusy=true; S.authMsg=""; render(); const {error}=await sb.auth.signInWithOAuth({provider:"google", options:{redirectTo: location.origin+location.pathname}}); if(error){ S.authBusy=false; S.authMsg="!הכניסה עם Google לא הצליחה: "+error.message; render(); } break; }
-    case "logout": closeSheet(); await sb.auth.signOut(); break;
+    case "logout": closeSheet(); try{ if(pushState.row) await sb.from("push_subscriptions").delete().eq("id",pushState.row.id); if(pushState.sub) await pushState.sub.unsubscribe(); }catch(e){} pushState={sub:null,row:null,checked:false}; await sb.auth.signOut(); break;
     case "vetSummary": vetSummary(); break;
     case "copyVs": { const t=$("#vs"); try{ await navigator.clipboard.writeText(t.value); toast("הועתק"); }catch(e){ t.select(); toast("סמן והעתק ידנית"); } break; }
     case "backup": doBackup(); break;
@@ -1155,7 +1218,7 @@ async function doInstall(){
   if(isIOS){ openSheet(sheetHead("התקנה באייפון")+'<div class="small" style="display:flex;flex-direction:column;gap:8px"><div>1. בספארי, ללחוץ על כפתור השיתוף (ריבוע עם חץ למעלה) בתחתית המסך.</div><div>2. לבחור <b>הוסף למסך הבית</b>.</div><div>3. ללחוץ <b>הוסף</b>. האייקון של פוגונה יופיע במסך הבית.</div></div>'); return; }
   openSheet(sheetHead("התקנה")+'<div class="small">בתפריט הדפדפן (שלוש הנקודות) לבחור <b>התקן אפליקציה</b> או <b>הוסף למסך הבית</b>.</div>');
 }
-if("serviceWorker" in navigator){ window.addEventListener("load", ()=>{ navigator.serviceWorker.register("sw.js").catch(()=>{}); }); }
+if("serviceWorker" in navigator){ window.addEventListener("load", ()=>{ navigator.serviceWorker.register("sw.js").catch(()=>{}); }); navigator.serviceWorker.addEventListener("message", e=>{ if(e.data && e.data.type==="pushsubscriptionchange"){ pushState.checked=false; if(user && S.hh) refreshPush(); } }); }
 updInstall();
 
 boot();

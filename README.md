@@ -23,3 +23,8 @@ python3 -m http.server 8000
 ולהוסיף `http://localhost:8000/` ל־Redirect URLs ב־Supabase.
 
 > המידע באפליקציה מבוסס על מקורות מגדלים (ReptiFiles, VCA) ואינו תחליף לווטרינר זוחלים.
+
+## התראות (Web Push)
+- פונקציית `supabase/functions/notify` רצה כל 15 דקות דרך `pg_cron` (job `pogona-notify`) עם כותרת `x-cron-secret`.
+- מפתחות VAPID וסוד ה־cron שמורים בטבלה `app_secrets` (RLS בלי מדיניות, נגישה רק ל־service role).
+- `push_subscriptions` לכל מכשיר, `push_sent` למניעת כפילויות. תזכורת לא נשלחת אם מישהו בבית כבר סימן.
