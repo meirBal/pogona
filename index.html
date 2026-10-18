@@ -160,6 +160,10 @@ h3{font-size:15px;margin:0}
 .res:last-child{border-bottom:0}
 .res .v{font-weight:700;font-variant-numeric:tabular-nums;text-align:end}
 .note{font-size:13px;color:var(--muted)}
+.src{color:var(--basalt);font-weight:500;text-decoration:none;unicode-bidi:isolate}
+.src:hover{text-decoration:underline}
+a.srcrow{color:inherit;text-decoration:none}
+a.srcrow:hover b{text-decoration:underline}
 .callout{border-radius:12px;padding:10px 12px;font-size:14px}
 .callout.vet{background:var(--vet-soft);color:var(--vet)} .callout.watch{background:var(--watch-soft);color:var(--watch)} .callout.ok{background:var(--ok-soft);color:var(--ok)} .callout.info{background:var(--basalt-soft);color:var(--basalt)}
 .callout b{color:inherit}
@@ -349,11 +353,25 @@ const BEHAVIORS = [
 ];
 const ST = {ok:["תקין","ok"], watch:["לעקוב","watch"], act:["לפעול","act"], vet:["ווטרינר","vet"]};
 
+const SOURCES = {
+  rf:{org:"ReptiFiles", t:"המדריך המלא לטיפול בחרדונים", u:"https://reptifiles.com/bearded-dragon-care/", d:"מדריך מקיף ומעודכן שנכתב על בסיס מחקר וייעוץ וטרינרי. המקור העיקרי שלנו לטמפרטורות, תאורה ותזונה."},
+  rfTemp:{org:"ReptiFiles", t:"תאורה, חימום ולחות", u:"https://reptifiles.com/bearded-dragon/care-guide/bearded-dragon-temperature-humidity", d:"טמפרטורות באסקינג, צד קר ולילה, מרחקי UVB לפי סוג נורה, ולחות."},
+  rfFood:{org:"ReptiFiles", t:"תזונה והאכלה", u:"https://reptifiles.com/bearded-dragon/care-guide/bearded-dragon-food", d:"כמה ומה להאכיל בכל גיל, ירקות בסיס, מה אסור, ולוח תוספים."},
+  rfSize:{org:"ReptiFiles", t:"גודל טרריום ומגורים משותפים", u:"https://reptifiles.com/bearded-dragon/care-guide/bearded-dragon-enclosure-size", d:"גודל מינימלי לבוגר ולמה לא לשכן חרדונים יחד."},
+  rfSub:{org:"ReptiFiles", t:"מצעים", u:"https://reptifiles.com/bearded-dragon/care-guide/bearded-dragon-substrate", d:"אילו מצעים מתאימים ואילו לא."},
+  rfHealth:{org:"ReptiFiles", t:"בריאות ומחלות", u:"https://reptifiles.com/bearded-dragon/care-guide/bearded-dragon-health", d:"סימנים נפוצים לבעיות בריאות ומתי לפנות לווטרינר."},
+  vca:{org:"VCA Animal Hospitals", t:"מחלות של חרדונים", u:"https://vcahospitals.com/know-your-pet/bearded-dragons-diseases", d:"רשת בתי חולים וטרינריים. מחלת עצמות (MBD), דלקות פה, טפילים, דלקות נשימה."},
+  rvc:{org:"Royal Veterinary College", t:"דף טיפול בחרדונים", u:"https://www.rvc.ac.uk/Media/Default/small-animal/documents/Bearded-dragon-care%20-%20UPDATED.pdf", d:"דף מידע של בית הספר המלכותי לווטרינריה בלונדון."},
+  tufts:{org:"Tufts Vet School", t:"מחקר על תזונה וכבד שומני", u:"https://vet.tufts.edu/news-events/news/feeding-and-caring-bearded-dragons", d:"מאמר מ־2022 של בית הספר לווטרינריה באוניברסיטת טאפטס, על מחקרים בנושא תזונה וכבד שומני אצל חרדונים."},
+  uvg:{org:"UV Guide UK", t:"מדריך תאורת UV לזוחלים", u:"https://www.uvguideuk.com/", d:"מדידות אמיתיות של נורות UV, כולל נורות כספית. מקום טוב לבדוק נורה ספציפית."},
+  arav:{org:"ARAV", t:"חיפוש ווטרינר לזוחלים", u:"https://arav.org/find-a-vet/", d:"איגוד הווטרינרים לזוחלים ודו־חיים. המאגר מתמקד בעיקר בארה״ב, אבל כולל גם חברים ממדינות אחרות."}
+};
+const srcLink = (k, label) => { const x=SOURCES[k]; return x ? '<a class="src" href="'+esc(x.u)+'" target="_blank" rel="noopener">'+esc(label||("מקור: "+x.org))+' ↗</a>' : ""; };
 const GREENS = {
   base:{t:"בסיס יומי", c:"ok", note:"2–3 מתחלפים בכל יום", items:["עלי קייל","דלורית מגוררת","דלעת","עלי קולרבי","אנדיב / עולש","כרוב סיני","כוסברה","זוקיני / קישוא","חסה רומית (מילוי)"]},
-  some:{t:"לפעמים", c:"watch", note:"פעם־פעמיים בשבוע", items:["פטרוזיליה","נבטי חמניה","ברוקולי","בטטה מגוררת","פלפל אדום / צהוב / כתום","גזר","שומר","כרוב לבן / אדום","ארוגולה","חובזה (בר, לא מרוסס)","כפות צבר בלי קוצים"]},
-  fruit:{t:"פינוק", c:"acc", note:"כמות קטנה, פעם בשבוע", items:["תאנה","פפאיה","מנגו","תות","אוכמניות","אגס או תפוח קלוף"]},
-  no:{t:"לא לתת", c:"vet", note:"", items:["תרד","מנגולד","עלי סלק","חמציץ","אבוקדו","בצל / בצל ירוק / שום","פטריות","לימון והדרים","עגבניה","חציל","תפוח אדמה","אייסברג"]}
+  some:{t:"לפעמים", c:"watch", note:"פעם־פעמיים בשבוע", items:["תרד, מנגולד, עלי סלק (מעט, בגלל אוקסלטים)","פטרוזיליה","נבטי חמניה","ברוקולי","בטטה מגוררת","פלפל אדום / צהוב / כתום","גזר","שומר","כרוב לבן / אדום","ארוגולה","חובזה (בר, לא מרוסס)","כפות צבר בלי קוצים"]},
+  fruit:{t:"פינוק", c:"acc", note:"כמות קטנה, לא יותר מפעם בחודש", items:["תאנה","פפאיה","מנגו","תות","אוכמניות","אגס או תפוח קלוף"]},
+  no:{t:"לא לתת", c:"vet", note:"", items:["חמציץ","אבוקדו","בצל / בצל ירוק / שום","פטריות","לימון והדרים","עגבניה","חציל","תפוח אדמה","אייסברג"]}
 };
 const BASKET = ["עלי קייל","דלורית","עלי קולרבי / קולרבי עם עלים","כרוב סיני או אנדיב","כוסברה","זוקיני","חסה רומית","פלפל אדום"];
 
@@ -682,7 +700,7 @@ function viewBeh(){
   h += '<div class="seg" role="group" aria-label="סינון">'+F.map(([k,t])=>'<button data-act="behFilter" data-k="'+k+'" aria-pressed="'+(S.behFilter===k)+'">'+t+'</button>').join("")+'</div>';
   const list = BEHAVIORS.filter(b=>S.behFilter==="all"||b.st===S.behFilter);
   h += '<div class="bgrid">'+list.map(b=>'<button class="bcard" data-act="openBeh" data-id="'+b.id+'"><span class="art">'+dragonSVG(Object.assign({label:b.n}, b.art))+'</span><b>'+esc(b.n)+'</b><span class="chip '+ST[b.st][1]+'" style="align-self:flex-start">'+ST[b.st][0]+'</span></button>').join("")+'</div>';
-  h += '<p class="note"><a href="privacy.html">מדיניות פרטיות</a> · הפירושים מבוססים על ניסיון של מגדלים ומקורות כמו VCA ו־ReptiFiles. הם לא אבחנה. בכל ספק, ווטרינר זוחלים.</p>';
+  h += '<p class="note"><a href="privacy.html">מדיניות פרטיות</a> · הפירושים מבוססים על ניסיון של מגדלים ועל '+srcLink("vca","VCA")+' ו־'+srcLink("rfHealth","ReptiFiles")+'. הם לא אבחנה. בכל ספק, ווטרינר זוחלים.</p>';
   return h;
 }
 
@@ -699,18 +717,20 @@ function viewFood(){
     '<div class="note" style="padding-top:8px">כל המוצרים נמצאו ברמי לוי אונליין. הסל מספיק לשני צעירים לשבועיים בערך, אבל את הקייל והכוסברה כדאי לקנות שוב באמצע.</div></div></section>';
   ["base","some","fruit","no"].forEach(k=>{ const g=GREENS[k];
     h += '<section class="sec"><div class="sec-h"><h2>'+g.t+'</h2><span class="hint">'+g.note+'</span></div><div class="food '+(g.c==="acc"?"":g.c)+'">'+g.items.map(x=>'<span>'+esc(x)+'</span>').join("")+'</div></section>'; });
+  h += '<p class="note">רשימות הירקות לפי '+srcLink("rfFood","ReptiFiles: תזונה")+'. תרד ומנגולד לא רעילים, אבל קושרים סידן, ולכן רק מדי פעם.</p>';
   h += '<section class="sec"><div class="sec-h"><h2>חרקים</h2></div><div class="card small" style="display:flex;flex-direction:column;gap:6px">'+
-    '<div><b>דוביה</b> כבסיס, בקערה עמוקה וחלקה (6–8 ס״מ) כדי שלא יברחו.</div><div><b>תולעי קמח</b> רק לפעמים. הרבה שריון ויחס סידן־זרחן גרוע.</div><div><b>גודל:</b> לא רחב יותר מהמרווח בין העיניים של החרדון.</div><div><b>האכלת המושבה</b> בירקות יום־יומיים לפני, כדי שמה שהם אכלו יגיע לחרדון.</div><div><b>כמות:</b> כמה שהוא אוכל ברצון בערך 10–15 דקות. המשקל אומר אם זה מספיק.</div></div></section>';
+    '<div><b>דוביה</b> כבסיס, בקערה עמוקה וחלקה (6–8 ס״מ) כדי שלא יברחו.</div><div><b>תולעי קמח</b> רק לפעמים. הרבה שריון ויחס סידן־זרחן גרוע.</div><div><b>גודל:</b> לא רחב יותר מהמרווח בין העיניים של החרדון.</div><div><b>האכלת המושבה</b> בירקות יום־יומיים לפני, כדי שמה שהם אכלו יגיע לחרדון.</div><div><b>כמות:</b> כמה שהוא אוכל ברצון בערך 10–15 דקות. המשקל אומר אם זה מספיק.</div><div>'+srcLink("rfFood")+' · '+srcLink("tufts")+'</div></div></section>';
   return h;
 }
 
 function viewSetup(){
-  const segs=[["calc","מחשבון"],["temp","בדיקת טמפ׳"],["buy","לפני שקונים"],["lamps","נורות"]];
-  let h = '<div class="seg" role="group" aria-label="הקמה">'+segs.map(([k,t])=>'<button data-act="setupSeg" data-k="'+k+'" aria-pressed="'+(S.setupSeg===k)+'">'+t+'</button>').join("")+'</div>';
+  const segs=[["calc","מחשבון"],["temp","בדיקת טמפ׳"],["buy","לפני שקונים"],["lamps","נורות"],["src","מקורות"]];
+  let h = '<div class="seg" role="group" aria-label="הקמה" style="flex-wrap:wrap">'+segs.map(([k,t])=>'<button data-act="setupSeg" data-k="'+k+'" aria-pressed="'+(S.setupSeg===k)+'">'+t+'</button>').join("")+'</div>';
   if(S.setupSeg==="calc") h += viewCalc();
   if(S.setupSeg==="temp") h += viewTemp();
   if(S.setupSeg==="buy") h += viewBuy();
   if(S.setupSeg==="lamps") h += viewLamps();
+  if(S.setupSeg==="src") h += viewSources();
   if(S.setupSeg==="scan") h += viewScan();
   return h;
 }
@@ -807,7 +827,7 @@ function viewTemp(){
     '<div class="field"><label>גיל</label><div class="opts">'+opt("age","juv","צעיר")+opt("age","adult","בוגר")+'</div></div>'+
     '<div class="field"><label>נורת חום</label><div class="opts">'+opt("lamp","mvb","משולבת (כספית)")+opt("lamp","halogen","הלוגן")+'</div></div></div></section>';
   h += '<section class="sec"><div class="sec-h"><h2>מה לעשות</h2></div><div class="alerts">'+tempAdvice().map(a=>'<div class="alert '+a[0]+'"><div><b>'+esc(a[1])+'</b><span>'+esc(a[2])+'</span></div></div>').join("")+'</div>';
-  h += '<div class="card scroll-x"><table class="g"><tr><td><b>משטח באסקינג</b></td><td class="num">42–45°</td><td class="muted small">לא מעל 50°</td></tr><tr><td><b>צד קר</b></td><td class="num">25–29°</td><td></td></tr><tr><td><b>לילה</b></td><td class="num">'+(t.age==="juv"?"18–24°":"12–24°")+'</td><td class="muted small">בלי אור</td></tr><tr><td><b>הפרש חם־קר</b></td><td class="num">12° ומעלה</td><td></td></tr></table></div><p class="note">טווחים לפי ReptiFiles. ללילה של צעיר בחרנו רף שמרני של 18°.</p></section>';
+  h += '<div class="card scroll-x"><table class="g"><tr><td><b>משטח באסקינג</b></td><td class="num">42–45°</td><td class="muted small">לא מעל 50°</td></tr><tr><td><b>צד קר</b></td><td class="num">25–29°</td><td></td></tr><tr><td><b>לילה</b></td><td class="num">'+(t.age==="juv"?"18–24°":"12–24°")+'</td><td class="muted small">בלי אור</td></tr><tr><td><b>הפרש חם־קר</b></td><td class="num">12° ומעלה</td><td></td></tr></table></div><p class="note">טווחים לפי '+srcLink("rfTemp","ReptiFiles: תאורה וחימום")+'. ללילה של צעיר בחרנו רף שמרני של 18°. לחות ממוצעת מומלצת: 30–60%.</p></section>';
   return h;
 }
 function tempAdvice(){
@@ -835,18 +855,25 @@ function tempAdvice(){
   }
   return A;
 }
+function viewSources(){
+  const groups=[["טיפול ומגורים",["rf","rfTemp","rfFood","rfSize","rfSub"]],["בריאות (מקורות וטרינריים)",["vca","rvc","tufts","rfHealth"]],["נורות UV",["uvg"]],["מציאת ווטרינר",["arav"]]];
+  let h='<section class="sec"><div class="card small">המידע באפליקציה מבוסס על המקורות האלה. כשיש מחלוקת בין מקורות, אנחנו כותבים את זה. אנחנו לא תחליף לווטרינר.</div></section>';
+  groups.forEach(([t,ks])=>{ h+='<section class="sec"><div class="sec-h"><h2>'+t+'</h2></div><div class="card list">'+ks.map(k=>{const x=SOURCES[k]; return '<a class="li srcrow" href="'+x.u+'" target="_blank" rel="noopener"><div class="grow"><b>'+esc(x.t)+'</b><span>'+esc(x.org)+' · '+esc(x.d)+'</span></div><span class="chip bas">↗</span></a>';}).join("")+'</div></section>'; });
+  h+='<p class="note">כל המקורות באנגלית. הקישורים נפתחים בלשונית חדשה.</p>';
+  return h;
+}
 function viewBuy(){
   const g={must:["חובה","ok"],rec:["מומלץ","watch"],no:["להימנע","vet"]};
   let h='';
   ["must","rec","no"].forEach(k=>{
     h+='<section class="sec"><div class="sec-h"><h2>'+g[k][0]+'</h2></div><div class="card list">'+CHECKLIST.filter(x=>x[0]===k).map(x=>'<div class="li"><span class="chip '+g[k][1]+'">'+g[k][0]+'</span><div class="grow"><b>'+esc(x[1])+'</b><span>'+esc(x[2])+'</span></div></div>').join("")+'</div></section>';
   });
-  h+='<section class="sec"><div class="card callout info"><b>מה המוכר ינסה למכור לך</b><br>ערכת מתחילים, נורה אדומה \"לחום בלילה\", חול סידן \"מעכל\", וספירלת UVB. את כל אלה עדיף להשאיר על המדף.</div></section>';
+  h+='<section class="sec"><div class="card callout info"><b>מה המוכר ינסה למכור לך</b><br>ערכת מתחילים, נורה אדומה \"לחום בלילה\", חול סידן \"מעכל\", וספירלת UVB. את כל אלה עדיף להשאיר על המדף.</div><p class="note">'+srcLink("rfSize","ReptiFiles: גודל טרריום")+' · '+srcLink("rfSub","ReptiFiles: מצעים")+' · '+srcLink("rfTemp","ReptiFiles: תאורה")+'</p></section>';
   return h;
 }
 function viewLamps(){
   let h='<section class="sec"><div class="card list">'+LAMPS.map(l=>'<div class="li" style="align-items:flex-start"><div class="grow"><b>'+esc(l[0])+'</b><span>'+esc(l[1])+' · '+esc(l[3])+'</span></div><span class="chip '+l[2]+'">'+(l[2]==="ok"?"מומלץ":l[2]==="watch"?"בתנאים":"לא")+'</span></div>').join("")+'</div></section>';
-  h+='<section class="sec"><div class="sec-h"><h2>ההרכב המומלץ בארץ</h2></div><div class="card small" style="display:flex;flex-direction:column;gap:6px"><div><b>נורה משולבת</b> על טיימר: UV וחום בסיס, במרחק שהיצרן ממליץ.</div><div><b>הלוגן</b> לידה על <b>טרמוסטט מעמעם</b>: כיוונון החום לפי העונה, בלי לזוז מהמרחק של ה־UV.</div><div><b>קרמי</b> על טרמוסטט: רק בלילות קרים.</div><div class="muted">מחליפים נורה משולבת כל 12 חודשים. היא לא מראה כשה־UVB נחלש.</div></div></section>';
+  h+='<section class="sec"><div class="sec-h"><h2>ההרכב המומלץ בארץ</h2></div><div class="card small" style="display:flex;flex-direction:column;gap:6px"><div><b>נורה משולבת</b> על טיימר: UV וחום בסיס, במרחק שהיצרן ממליץ.</div><div><b>הלוגן</b> לידה על <b>טרמוסטט מעמעם</b>: כיוונון החום לפי העונה, בלי לזוז מהמרחק של ה־UV.</div><div><b>קרמי</b> על טרמוסטט: רק בלילות קרים.</div><div class="muted">מחליפים נורה משולבת כל 12 חודשים. היא לא מראה כשה־UVB נחלש.</div><div>'+srcLink("rfTemp")+' · '+srcLink("uvg","UV Guide UK: מדידות נורות")+'</div></div></section>';
   h+='<section class="sec"><div class="card callout vet"><b>הנורה האדומה</b><br>"היא לא מפריעה להם לישון" זה לא נכון. חרדונים רואים אור אדום, והשינה שלהם נפגעת. על האריזה לחפש Night, Red, Infrared או Moonlight, ולוותר.</div></section>';
   return h;
 }
@@ -988,7 +1015,7 @@ document.addEventListener("click", async ev=>{
     case "logBeh": closeSheet(); try{ await addLog({d:id, type:"behavior", v:{b:el.dataset.b}}); toast("נרשם"); }catch(e){} break;
     case "delLog": if(S.confirmDel===id){ S.confirmDel=null; removeLog(id); } else { S.confirmDel=id; render(); } break;
     case "behFilter": S.behFilter=el.dataset.k; render(); break;
-    case "openBeh": { const b=BEHAVIORS.find(x=>x.id===id); openSheet(sheetHead(esc(b.n))+'<div class="bdetail"><div class="art">'+dragonSVG(Object.assign({label:b.n},b.art))+'</div><span class="chip '+ST[b.st][1]+'" style="align-self:flex-start">'+ST[b.st][0]+'</span><div class="kv"><span class="k">איך זה נראה</span><span>'+esc(b.look)+'</span></div><div class="kv"><span class="k">מה זה יכול להיות</span><span>'+esc(b.mean)+'</span></div><div class="kv"><span class="k">מה לעשות</span><span>'+esc(b.act)+'</span></div>'+
+    case "openBeh": { const b=BEHAVIORS.find(x=>x.id===id); openSheet(sheetHead(esc(b.n))+'<div class="bdetail"><div class="art">'+dragonSVG(Object.assign({label:b.n},b.art))+'</div><span class="chip '+ST[b.st][1]+'" style="align-self:flex-start">'+ST[b.st][0]+'</span><div class="kv"><span class="k">איך זה נראה</span><span>'+esc(b.look)+'</span></div><div class="kv"><span class="k">מה זה יכול להיות</span><span>'+esc(b.mean)+'</span></div><div class="kv"><span class="k">מה לעשות</span><span>'+esc(b.act)+'</span></div><div class="note">'+(b.st==="vet"||b.st==="act"?srcLink("vca")+" · ":"")+srcLink("rfHealth")+'</div>'+
       (S.dragons.length?'<div class="row wrap">'+S.dragons.map(d=>'<button class="btn sm" data-act="logBeh" data-b="'+b.id+'" data-id="'+esc(d.id)+'">רשום אצל '+esc(d.name)+'</button>').join("")+'</div>':'')+'</div>'); break; }
     case "triage": { const s=el.dataset.step; if(s===undefined) triage(0); else if(s.startsWith("r")){ const i=+s.slice(1); showTriage([["vet","ווטרינר זוחלים היום","זה מצב דחוף. לפנות היום לווטרינר זוחלים או אקזוטיים."],["vet","ווטרינר זוחלים בימים הקרובים","לקבוע תור. בינתיים להמשיך לרשום משקל, אוכל וצואה, ולהביא את הסיכום מהיומן."],["watch","לתקן את הסביבה ולבדוק שוב בעוד 3–7 ימים","רוב הבעיות מתחילות בחום או ב־UV. אם אין שיפור, לחזור לשאלה השנייה."]][i]); } else triage(+s); break; }
     case "saladPrep": S.config.salad.prepared=today(); await saveConfig(); toast("קופסת סלט נרשמה"); break;
