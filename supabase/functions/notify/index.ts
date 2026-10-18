@@ -41,23 +41,30 @@ async function remindersFor(hh: string, now: Date): Promise<Msg[] | null> {
   const recent = new Date(now.getTime() - 2 * 864e5).toISOString();
   const wSince = new Date(now.getTime() - 60 * 864e5).toISOString();
   const [dr, lo, wt, st, bu] = await Promise.all([
-    sb.from("dragons").select("id,name").eq("household_id", hh),
+    sb.from("dragons").select("id,name,hatch").eq("household_id", hh),
     sb.from("logs").select("type,ts").eq("household_id", hh).in("type", ["salad", "insect"]).gte("ts", recent),
     sb.from("logs").select("dragon_id,ts").eq("household_id", hh).eq("type", "weight").gte("ts", wSince).order("ts", { ascending: false }),
-    sb.from("household_settings").select("salad_prepared,location").eq("household_id", hh).maybeSingle(),
+    sb.from("household_settings").select("salad_prepared,location,supp").eq("household_id", hh).maybeSingle(),
     sb.from("bulbs").select("id,label,installed").eq("household_id", hh),
   ]);
   if (dr.error || lo.error || wt.error || st.error || bu.error) { console.error("query failed", hh, dr.error || lo.error || wt.error || st.error || bu.error); return null; }
   const dragons = dr.data || []; if (!dragons.length) return out;
   const today = (t: string) => (lo.data || []).some(l => l.type === t && local(new Date(l.ts)).day === L.day);
   const names = dragons.map(d => d.name).join(" ו");
+  // age: under 12 months (or unknown) insects daily; from 12 months only on the household's insect days
+  const months = (h: string | null) => { if (!h) return null; const [y, m] = String(h).split("-").map(Number); if (!Number.isFinite(y) || !Number.isFinite(m)) return null; const [cy, cm] = L.day.split("-").map(Number); const v = (cy - y) * 12 + (cm - m); return v < 0 ? null : v; };
+  const sv = (st.data?.supp || {}) as { insectDays?: number[] };
+  const insDays = Array.isArray(sv.insectDays) && sv.insectDays.length ? sv.insectDays.map(Number) : [0, 3];
+  const wd = new Date(L.day + "T12:00:00Z").getUTCDay();
+  const eaters = dragons.filter(d => { const m = months(d.hatch); return m === null || m < 12 || insDays.includes(wd); });
+  const whoIns = eaters.length && eaters.length < dragons.length ? `רק ל${eaters.map(d => d.name).join(" ו")}: ` : "";
 
   if (between(L.hour, 6, 10) && !today("salad")) out.push({ kind: "salad", pref: "salad", title: "בוקר טוב, זמן סלט", body: `חופן מהקופסה ל${names}, וכמה טיפות מים.` });
-  if (between(L.hour, 17, 20) && !today("insect")) out.push({ kind: "insects", pref: "insects", title: "זמן חרקים", body: "דוביה מאובקים בקערה העמוקה, ולהוציא את שאריות הסלט." });
-  if (between(L.hour, 20, 22) && !today("insect")) out.push({ kind: "insects_late", pref: "insects", title: "עוד לא נרשמה ארוחת חרקים היום", body: "אם כבר האכלתם, אפשר לסמן באפליקציה. אם לא, עדיף עכשיו לפני כיבוי האור." });
+  if (eaters.length && between(L.hour, 17, 20) && !today("insect")) out.push({ kind: "insects", pref: "insects", title: "זמן חרקים", body: whoIns + "דוביה מאובקים בקערה העמוקה, ולהוציא את שאריות הסלט." });
+  if (eaters.length && between(L.hour, 20, 22) && !today("insect")) out.push({ kind: "insects_late", pref: "insects", title: "עוד לא נרשמה ארוחת חרקים היום", body: whoIns + "אם כבר האכלתם, אפשר לסמן באפליקציה. אם לא, עדיף עכשיו לפני כיבוי האור." });
   if (between(L.hour, 9, 13)) {
     const late = dragons.filter(d => { const w = (wt.data || []).find(l => l.dragon_id === d.id); return !w || daysBetween(local(new Date(w.ts)).day, L.day) >= 7; });
-    if (late.length) out.push({ kind: "weigh", pref: "care", day: weekStart(L.day), title: "יום שקילה", body: `לשקול את ${late.map(d => d.name).join(" ו")}, בבוקר לפני אוכל.` });
+    if (late.length) out.push({ kind: "weigh:" + late.map(d => d.id).sort().join(","), pref: "care", day: weekStart(L.day), title: "יום שקילה", body: `לשקול את ${late.map(d => d.name).join(" ו")}, בבוקר לפני אוכל.` });
     const sp = st.data?.salad_prepared as string | null;
     if (sp && daysBetween(sp, L.day) >= 3) out.push({ kind: "salad_box", pref: "care", title: daysBetween(sp, L.day) >= 4 ? "קופסת הסלט ישנה" : "הסלט נגמר מחר", body: "הזמן להכין קופסה חדשה: 2/3 ירוקים, 1/3 דלורית וזוקיני." });
     for (const b of bu.data || []) {
