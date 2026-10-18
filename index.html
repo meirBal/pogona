@@ -651,7 +651,7 @@ function viewBeh(){
   h += '<div class="seg" role="group" aria-label="סינון">'+F.map(([k,t])=>'<button data-act="behFilter" data-k="'+k+'" aria-pressed="'+(S.behFilter===k)+'">'+t+'</button>').join("")+'</div>';
   const list = BEHAVIORS.filter(b=>S.behFilter==="all"||b.st===S.behFilter);
   h += '<div class="bgrid">'+list.map(b=>'<button class="bcard" data-act="openBeh" data-id="'+b.id+'"><span class="art">'+dragonSVG(Object.assign({label:b.n}, b.art))+'</span><b>'+esc(b.n)+'</b><span class="chip '+ST[b.st][1]+'" style="align-self:flex-start">'+ST[b.st][0]+'</span></button>').join("")+'</div>';
-  h += '<p class="note">הפירושים מבוססים על ניסיון של מגדלים ומקורות כמו VCA ו־ReptiFiles. הם לא אבחנה. בכל ספק, ווטרינר זוחלים.</p>';
+  h += '<p class="note"><a href="privacy.html">מדיניות פרטיות</a> · הפירושים מבוססים על ניסיון של מגדלים ומקורות כמו VCA ו־ReptiFiles. הם לא אבחנה. בכל ספק, ווטרינר זוחלים.</p>';
   return h;
 }
 
