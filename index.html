@@ -449,9 +449,10 @@ async function boot(){
   sb=window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true, autoRefreshToken:true, detectSessionInUrl:true}});
   const {data}=await sb.auth.getSession(); user=data.session ? data.session.user : null;
   sb.auth.onAuthStateChange((ev,ses)=>{ const was=user&&user.id; user=ses?ses.user:null;
-    if(user && user.id!==was){ S.mode="loading"; render(); loadAll(); }
+    if(user && user.id!==was){ S.mode="loading"; render(); setTimeout(loadAll, 0); }
     if(!user){ S.mode="auth"; S.dragons=[]; S.bulbs=[]; S.logs=[]; render(); } });
-  if(user) await loadAll(); else { S.mode="auth"; render(); }
+  if(user) setTimeout(loadAll, 0); else { S.mode="auth"; render(); }
+  setTimeout(()=>{ if(S.mode==="loading"){ S.mode="error"; render(); } }, 20000);
   document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible" && user && S.mode==="ready" && !$("#layer").innerHTML) loadAll(); });
 }
 function viewAuth(){
