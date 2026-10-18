@@ -220,7 +220,8 @@ table.g tr:last-child td{border-bottom:0}
       <div aria-hidden="true" style="width:44px" id="brandArt"></div>
       <div><h1>פוגונה</h1><small id="subtitle">יומן החרדונים שלך</small></div>
     </div>
-    <button class="iconbtn" id="gear" hidden data-act="settings" aria-label="הגדרות"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+    <div class="row" style="gap:8px"><button class="btn sm pri" id="installBtn" hidden data-act="install">התקנה</button>
+    <button class="iconbtn" id="gear" hidden data-act="settings" aria-label="הגדרות"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button></div>
   </header>
   <main id="view" aria-live="polite"></main>
 </div>
@@ -947,6 +948,7 @@ document.addEventListener("click", async ev=>{
     case "calcOpt": { const k=el.dataset.k; let v=el.dataset.v; if(v==="true")v=true; else if(v==="false")v=false; else if(!isNaN(+v)&&k==="watts") v=+v; S.calc[k]=v; lsSet("pg.calc",S.calc); render(); break; }
     case "tOpt": S.tcheck[el.dataset.k]=el.dataset.v; lsSet("pg.tcheck",S.tcheck); render(); break;
     case "login": doLogin(); break;
+    case "install": doInstall(); break;
     case "google": { S.authBusy=true; S.authMsg=""; render(); const {error}=await sb.auth.signInWithOAuth({provider:"google", options:{redirectTo: location.origin+location.pathname}}); if(error){ S.authBusy=false; S.authMsg="!הכניסה עם Google לא הצליחה: "+error.message; render(); } break; }
     case "logout": closeSheet(); await sb.auth.signOut(); break;
     case "vetSummary": vetSummary(); break;
@@ -1023,6 +1025,21 @@ async function doRestore(){
   if(j.config && j.config.supp){ S.config.supp=Object.assign(S.config.supp, j.config.supp); if(j.config.salad) S.config.salad=j.config.salad; await saveConfig(); }
   await loadAll(); toast("השחזור הסתיים");
 }
+
+/* ---------------- install (PWA) ---------------- */
+let installEvt=null;
+const standalone = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone===true;
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform==="MacIntel" && navigator.maxTouchPoints>1);
+function updInstall(){ const b=$("#installBtn"); if(b) b.hidden = standalone() || !(installEvt || isIOS); }
+window.addEventListener("beforeinstallprompt", e=>{ e.preventDefault(); installEvt=e; updInstall(); });
+window.addEventListener("appinstalled", ()=>{ installEvt=null; updInstall(); toast("פוגונה הותקנה במסך הבית"); });
+async function doInstall(){
+  if(installEvt){ installEvt.prompt(); const r=await installEvt.userChoice.catch(()=>null); installEvt=null; updInstall(); if(r&&r.outcome==="accepted") toast("מתקין…"); return; }
+  if(isIOS){ openSheet(sheetHead("התקנה באייפון")+'<div class="small" style="display:flex;flex-direction:column;gap:8px"><div>1. בספארי, ללחוץ על כפתור השיתוף (ריבוע עם חץ למעלה) בתחתית המסך.</div><div>2. לבחור <b>הוסף למסך הבית</b>.</div><div>3. ללחוץ <b>הוסף</b>. האייקון של פוגונה יופיע במסך הבית.</div></div>'); return; }
+  openSheet(sheetHead("התקנה")+'<div class="small">בתפריט הדפדפן (שלוש הנקודות) לבחור <b>התקן אפליקציה</b> או <b>הוסף למסך הבית</b>.</div>');
+}
+if("serviceWorker" in navigator){ window.addEventListener("load", ()=>{ navigator.serviceWorker.register("sw.js").catch(()=>{}); }); }
+updInstall();
 
 boot();
 })();
