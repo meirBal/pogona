@@ -69,13 +69,13 @@ async function remindersFor(hh: string, now: Date): Promise<Msg[] | null> {
   const loc = (st.data?.location || {}) as { lat?: number; lon?: number; name?: string };
   if (loc.lat && (between(L.hour, 18, 21) || between(L.hour, 8, 11))) {
     const w = await forecast(loc.lat, loc.lon!, L);
-    if (w && between(L.hour, 18, 21) && w.nightMin <= 12) out.push({ kind: "cold", pref: "weather", title: `לילה קר: ${w.nightMin}° ב${loc.name || "חוץ"}`, body: "לוודא שהגוף הקרמי דולק ושהטרמוסטט מכוון ל־20–22°." });
-    if (w && between(L.hour, 8, 11) && w.dayMax >= 35) out.push({ kind: "heat", pref: "weather", title: `יום חם: ${w.dayMax}° ב${loc.name || "חוץ"}`, body: "לבדוק שהצד הקר נשאר עד 29°, להרחיק משמש ישירה, ושיש מים." });
+    if (w && between(L.hour, 18, 21) && w.nightMin != null && w.nightMin <= 12) out.push({ kind: "cold", pref: "weather", title: `לילה קר: ${w.nightMin}° ב${loc.name || "חוץ"}`, body: "למדוד הלילה בתוך הטרריום. אם יורד מתחת ל־15° (18° לצעירים), גוף קרמי על טרמוסטט." });
+    if (w && between(L.hour, 8, 11) && w.dayMax != null && w.dayMax >= 35) out.push({ kind: "heat", pref: "weather", title: `יום חם: ${w.dayMax}° ב${loc.name || "חוץ"}`, body: "לבדוק שהצד הקר נשאר עד 29°, ולהרחיק משמש ישירה. אם חם מדי, קודם להצל ולאוורר." });
   }
   return out;
 }
 
-const wxCache = new Map<string, { nightMin: number; dayMax: number } | null>();
+let wxCache = new Map<string, { nightMin: number | null; dayMax: number | null } | null>();
 async function forecast(lat: number, lon: number, L: { day: string }) {
   const k = `${lat},${lon}`; if (wxCache.has(k)) return wxCache.get(k)!;
   try {
@@ -84,9 +84,10 @@ async function forecast(lat: number, lon: number, L: { day: string }) {
     const j = await r.json(); const t: string[] = j.hourly.time, v: number[] = j.hourly.temperature_2m;
     const tmw = new Date(Date.parse(L.day) + 864e5).toISOString().slice(0, 10);
     const hr = (x: string) => Number(x.slice(11, 13));
-    const night = t.map((x, i) => i).filter(i => (t[i].startsWith(L.day) && hr(t[i]) >= 20) || (t[i].startsWith(tmw) && hr(t[i]) <= 8));
-    const day = t.map((x, i) => i).filter(i => t[i].startsWith(L.day) && hr(t[i]) >= 9 && hr(t[i]) <= 18);
-    const w = { nightMin: Math.round(Math.min(...night.map(i => v[i]))), dayMax: Math.round(Math.max(...day.map(i => v[i]))) };
+    const ok = (i: number) => typeof v[i] === "number";
+    const night = t.map((x, i) => i).filter(i => ok(i) && ((t[i].startsWith(L.day) && hr(t[i]) >= 20) || (t[i].startsWith(tmw) && hr(t[i]) <= 8)));
+    const day = t.map((x, i) => i).filter(i => ok(i) && t[i].startsWith(L.day) && hr(t[i]) >= 9 && hr(t[i]) <= 18);
+    const w = { nightMin: night.length ? Math.round(Math.min(...night.map(i => v[i]))) : null, dayMax: day.length ? Math.round(Math.max(...day.map(i => v[i]))) : null };
     wxCache.set(k, w); return w;
   } catch (e) { console.error("forecast", e); wxCache.set(k, null); return null; }
 }
@@ -118,6 +119,7 @@ Deno.serve(async (req) => {
 
   if (!sec.cron_secret || req.headers.get("x-cron-secret") !== sec.cron_secret) return json({ error: "unauthorized" }, 401);
   const now = new Date(); const L = local(now);
+  wxCache = new Map(); // fresh forecast every run
   const subs = await allSubs();
   const byHh = new Map<string, Sub[]>(); for (const s of subs) { if (!byHh.has(s.household_id)) byHh.set(s.household_id, []); byHh.get(s.household_id)!.push(s); }
   let total = 0;

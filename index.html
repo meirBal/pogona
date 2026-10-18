@@ -1086,41 +1086,45 @@ function pushHTML(){
 
 /* ---------------- weather (Open-Meteo, no key) ---------------- */
 let WX = {state:"idle", data:null, err:null, key:null};
+const COLD_NIGHT = 12, HOT_DAY = 35;
 function wxAdvice(w){
   const A=[]; if(!w) return A;
-  if(w.nightMin<=10) A.push(["act","לילה קר מאוד: "+w.nightMin+"° בחוץ","לוודא שהגוף הקרמי דולק ושהטרמוסטט מכוון ל־20–22°. בלי נורה אדומה."]);
-  else if(w.nightMin<=15) A.push(["watch","לילה קר: "+w.nightMin+"° בחוץ","אם החדר לא מחומם, לבדוק שהלילה בטרריום לא יורד מתחת ל־18° אצל צעירים."]);
-  if(w.dayMax>=40) A.push(["act","שרב כבד: "+w.dayMax+"° בחוץ","לבדוק שהצד הקר לא עולה מעל 29°, להרחיק מחלון ושמש ישירה, ולוודא שיש מים. אם חם מדי, לכבות את נורת החום לכמה שעות."]);
-  else if(w.dayMax>=35) A.push(["watch","יום חם: "+w.dayMax+"° בחוץ","לבדוק שהצד הקר נשאר עד 29°, ושהטרריום לא בשמש ישירה."]);
+  if(w.nightMin!=null && w.nightMin<=COLD_NIGHT) A.push(["watch","לילה קר: "+w.nightMin+"° בחוץ","למדוד הלילה בתוך הטרריום. אם יורד מתחת ל־15° (18° לצעירים, רף זהיר שלנו), גוף קרמי על טרמוסטט. בלי נורה אדומה."]);
+  if(w.dayMax!=null && w.dayMax>=HOT_DAY) A.push([w.dayMax>=40?"act":"watch",(w.dayMax>=40?"שרב כבד: ":"יום חם: ")+w.dayMax+"° בחוץ","לבדוק שהצד הקר נשאר עד 29°, ושהטרריום לא בשמש ישירה. אם עולה מעל 29–30°, קודם להצל ולאוורר את החדר. אם בכל זאת מכבים את הנורה, זכרו שבנורה משולבת היא גם מקור ה־UVB, אז רק לכמה שעות."]);
   return A;
 }
-async function loadWeather(force){
-  const L=S.config.location||{}; if(!L.lat) { WX={state:"none"}; return; }
-  const key=L.lat+","+L.lon+","+new Date().toISOString().slice(0,13);
-  if(!force && WX.key===key && WX.state==="done") return;
-  try{ const c=JSON.parse(sessionStorage.getItem("pg.wx")||"null"); if(!force && c && c.key===key){ WX=c; render(); return; } }catch(e){}
-  WX={state:"busy", key};
+function wxKey(){ const L=S.config.location||{}; return L.lat ? L.lat+","+L.lon+","+new Date().toISOString().slice(0,13) : null; }
+async function loadWeather(k){
+  const L=S.config.location||{};
+  try{ const c=JSON.parse(sessionStorage.getItem("pg.wx")||"null"); if(c && c.key===k && c.state==="done"){ WX=c; render(); return; } }catch(e){}
   try{
-    const r=await fetch("https://api.open-meteo.com/v1/forecast?latitude="+L.lat+"&longitude="+L.lon+"&hourly=temperature_2m&forecast_days=2&timezone=Asia%2FJerusalem");
+    const r=await fetch("https://api.open-meteo.com/v1/forecast?latitude="+L.lat+"&longitude="+L.lon+"&hourly=temperature_2m&forecast_days=2&timezone=auto");
     if(!r.ok) throw new Error("http "+r.status);
     const j=await r.json(); const t=j.hourly.time, v=j.hourly.temperature_2m;
-    const now=new Date(); const pad2=n=>String(n).padStart(2,"0"); const today=now.getFullYear()+"-"+pad2(now.getMonth()+1)+"-"+pad2(now.getDate());
-    const tmw=(()=>{ const d=new Date(now); d.setDate(d.getDate()+1); return d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate()); })();
-    const nightIdx=t.map((x,i)=>i).filter(i=> (t[i].startsWith(today) && +t[i].slice(11,13)>=20) || (t[i].startsWith(tmw) && +t[i].slice(11,13)<=8));
-    const dayIdx=t.map((x,i)=>i).filter(i=> t[i].startsWith(+now.getHours()>=18?tmw:today) && +t[i].slice(11,13)>=9 && +t[i].slice(11,13)<=18);
-    const nightMin=Math.round(Math.min(...nightIdx.map(i=>v[i]))), dayMax=Math.round(Math.max(...dayIdx.map(i=>v[i])));
-    WX={state:"done", key, data:{nightMin, dayMax, dayLabel: +now.getHours()>=18?"מחר":"היום", place:L.name}};
+    const pad2=n=>String(n).padStart(2,"0"), now=new Date(), ymdL=d=>d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate());
+    const today=ymdL(now), tmw=ymdL(new Date(now.getTime()+864e5)), H=now.getHours(), nowStr=today+"T"+pad2(H)+":00";
+    const hr=x=>+x.slice(11,13); const idx=f=>t.map((x,i)=>i).filter(i=>f(t[i]) && typeof v[i]==="number");
+    const night = H<8 ? idx(x=> x>=nowStr && x.startsWith(today) && hr(x)<=8)
+                      : idx(x=> x>=nowStr && ((x.startsWith(today) && hr(x)>=20) || (x.startsWith(tmw) && hr(x)<=8)));
+    const dayDate = H>=18 ? tmw : today;
+    const day = idx(x=> x.startsWith(dayDate) && hr(x)>=9 && hr(x)<=18);
+    const data = { nightMin: night.length? Math.round(Math.min(...night.map(i=>v[i]))) : null, dayMax: day.length? Math.round(Math.max(...day.map(i=>v[i]))) : null, dayLabel: H>=18?"מחר":"היום", nightLabel: H<8?"עד הבוקר":"הלילה", place:L.name };
+    if(WX.key!==k) return; // city changed meanwhile
+    WX={state:"done", key:k, data};
     try{ sessionStorage.setItem("pg.wx", JSON.stringify(WX)); }catch(e){}
-  }catch(e){ WX={state:"err", key, err:"לא הצלחתי לטעון מזג אוויר"}; }
+  }catch(e){ if(WX.key===k) WX={state:"err", key:k, err:"לא הצלחתי לטעון מזג אוויר"}; }
   render();
 }
 function weatherHTML(){
-  const L=S.config.location||{};
-  if(!L.lat) return '<section class="sec"><div class="card row" style="gap:12px"><span class="ic" style="width:34px;height:34px;display:grid;place-items:center">'+ico("sun",'style="width:26px;height:26px;stroke:var(--accent)"')+'</span><div class="grow small">התראות על לילה קר ושרב לפי העיר שלך.</div><button class="btn sm" data-act="wxSetup">בחירת עיר</button></div></section>';
-  if(WX.state!=="done"){ if(WX.state!=="busy" && WX.state!=="err") setTimeout(()=>loadWeather(),0); return WX.state==="err" ? '<section class="sec"><div class="card small muted">'+esc(WX.err)+'</div></section>' : ''; }
+  const k=wxKey();
+  if(!k) return '<section class="sec"><div class="card row" style="gap:12px"><span class="ic" style="width:34px;height:34px;display:grid;place-items:center">'+ico("sun",'style="width:26px;height:26px;stroke:var(--accent)"')+'</span><div class="grow small">התראות על לילה קר ושרב לפי העיר שלך.</div><button class="btn sm" data-act="wxSetup">בחירת עיר</button></div></section>';
+  if(WX.key!==k){ WX={state:"busy", key:k}; setTimeout(()=>loadWeather(k),0); }
+  if(WX.state==="err") return '<section class="sec"><div class="card small muted">'+esc(WX.err)+'</div></section>';
+  if(WX.state!=="done" || !WX.data || (WX.data.nightMin==null && WX.data.dayMax==null)) return '';
   const w=WX.data, A=wxAdvice(w);
+  const cell=(val,lbl)=> val==null ? '' : '<div><div class="big num">'+val+'°</div><div class="small muted">'+lbl+'</div></div>';
   return '<section class="sec"><div class="sec-h"><h2>מזג אוויר · '+esc(w.place||"")+'</h2><span class="hint">'+srcLink("rfTemp","טווחים: ReptiFiles")+'</span></div>'+
-    '<div class="card row" style="justify-content:space-around;text-align:center"><div><div class="big num">'+w.nightMin+'°</div><div class="small muted">מינימום הלילה</div></div><div><div class="big num">'+w.dayMax+'°</div><div class="small muted">מקסימום '+w.dayLabel+'</div></div></div>'+
+    '<div class="card row" style="justify-content:space-around;text-align:center">'+cell(w.nightMin,"מינימום "+w.nightLabel)+cell(w.dayMax,"מקסימום "+w.dayLabel)+'</div>'+
     (A.length?'<div class="alerts">'+A.map(a=>'<div class="alert '+a[0]+'"><div><b>'+esc(a[1])+'</b><span>'+esc(a[2])+'</span></div></div>').join("")+'</div>':'<div class="small muted">אין צפי לקור או לחום חריגים. אלה טמפרטורות בחוץ, בבית זה בדרך כלל מתון יותר.</div>')+
     '<p class="note">נתונים: <a class="src" href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo ↗</a></p></section>';
 }
@@ -1171,7 +1175,7 @@ document.addEventListener("click", async ev=>{
     case "invite": doInvite(); break;
     case "vets": vetsSheet(); break;
     case "wxSetup": wxSetupSheet(); break;
-    case "wxPick": { S.config.location={name:el.dataset.name, lat:Math.round(+el.dataset.lat*1e4)/1e4, lon:Math.round(+el.dataset.lon*1e4)/1e4}; closeSheet(); WX={state:"idle"}; try{ sessionStorage.removeItem("pg.wx"); }catch(e){} await saveConfig(); toast("נשמר: "+el.dataset.name); break; }
+    case "wxPick": { S.config.location={name:el.dataset.name, lat:Math.round(+el.dataset.lat*1e4)/1e4, lon:Math.round(+el.dataset.lon*1e4)/1e4}; closeSheet(); WX={state:"idle", key:null}; try{ sessionStorage.removeItem("pg.wx"); }catch(e){} await saveConfig(); toast("נשמר: "+el.dataset.name); break; }
     case "pushOn": enablePush(); break;
     case "pushOff": disablePush(); break;
     case "pushTest": testPush(); break;
