@@ -349,7 +349,7 @@ const BEHAVIORS = [
   {id:"tail", n:"זנב מורם", st:"ok", art:{tailUp:true}, look:"הזנב מורם באוויר.", mean:"ערנות, ציד, חיזור, או לפני צרכים.", act:"שום דבר."},
   {id:"hiss", n:"נשיפה", st:"watch", art:{open:true, beard:"black", hiss:true}, look:"פה פתוח עם נשיפה, לרוב עם זקן שחור.", mean:"פחד או הגנה.", act:"להפחית הרמות לכמה ימים, ולהתקרב מהצד ולא מלמעלה."},
   {id:"lethargy", n:"עייפות וחולשה", st:"act", art:{eyes:"closed", zz:true, anim:"anim-zz"}, look:"פחות פעיל, אחיזה חלשה, שוכב הרבה.", mean:"בדרך כלל קר לו. יכול להיות גם מחלה או טפילים.", act:"לבדוק באסקינג, צד קר ו־UV. אם הכול תקין וזה נמשך, ווטרינר עם בדיקת צואה."},
-  {id:"brum", n:"שינה ממושכת", st:"vet", art:{eyes:"closed", moon:true}, look:"ישן שבועות ולא אוכל.", mean:"אצל בוגר בריא בסתיו־חורף זה יכול להיות תרדמת חורף. מתחת לגיל שנה זה לא נפוץ, ויש להתייחס לזה כחשד למחלה.", act:"מתחת לגיל שנה: ווטרינר. בוגר: בדיקת ווטרינר לפני שנותנים לו לישון."}
+  {id:"brum", n:"שינה ממושכת", st:"watch", juvVet:true, art:{eyes:"closed", moon:true}, look:"ישן שבועות ולא אוכל.", mean:"אצל בוגר בריא בסתיו־חורף זה יכול להיות תרדמת חורף. מתחת לגיל שנה זה לא נפוץ, ויש להתייחס לזה כחשד למחלה.", act:"מתחת לגיל שנה: ווטרינר. בוגר: לשקול כל שבוע. ירידה של יותר מ־10%, או סימני מחלה, זה הזמן לווטרינר."}
 ];
 const ST = {ok:["תקין","ok"], watch:["לעקוב","watch"], act:["לפעול","act"], vet:["ווטרינר","vet"]};
 
@@ -371,7 +371,8 @@ const GREENS = {
   base:{t:"בסיס יומי", c:"ok", note:"2–3 מתחלפים בכל יום", items:["עלי קייל","דלורית מגוררת","דלעת","עלי קולרבי","אנדיב / עולש","כרוב סיני","כוסברה","זוקיני / קישוא","חסה רומית (מילוי)"]},
   some:{t:"לפעמים", c:"watch", note:"פעם־פעמיים בשבוע", items:["תרד, מנגולד, עלי סלק (מעט, בגלל אוקסלטים)","פטרוזיליה","נבטי חמניה","ברוקולי","בטטה מגוררת","פלפל אדום / צהוב / כתום","גזר","שומר","כרוב לבן / אדום","ארוגולה","חובזה (בר, לא מרוסס)","כפות צבר בלי קוצים"]},
   fruit:{t:"פינוק", c:"acc", note:"כמות קטנה, לא יותר מפעם בחודש", items:["תאנה","פפאיה","מנגו","תות","אוכמניות","אגס או תפוח קלוף"]},
-  no:{t:"לא לתת", c:"vet", note:"", items:["חמציץ","אבוקדו","בצל / בצל ירוק / שום","פטריות","לימון והדרים","עגבניה","חציל","תפוח אדמה","אייסברג"]}
+  no:{t:"רעיל, לא לתת", c:"vet", note:"", items:["אבוקדו","בצל / בצל ירוק / שום","פטריות","חרקים שנאספו בטבע"]},
+  poor:{t:"לא כדאי", c:"", note:"לא רעיל, אבל בלי ערך או לא מתאים", items:["אייסברג","חמציץ","לימון והדרים","עגבניה","חציל","תפוח אדמה"]}
 };
 const BASKET = ["עלי קייל","דלורית","עלי קולרבי / קולרבי עם עלים","כרוב סיני או אנדיב","כוסברה","זוקיני","חסה רומית","פלפל אדום"];
 
@@ -406,7 +407,7 @@ const LAMPS = [
 
 /* ---------------- state ---------------- */
 const S = {
-  mode:"loading", dragons:[], bulbs:[], months:{}, config:{supp:{multiDay:5, plainDay:6, d3:false}, salad:{prepared:null}, shop:{}},
+  mode:"loading", dragons:[], bulbs:[], months:{}, config:{supp:{plainDay:-1, d3:false}, salad:{prepared:null}, shop:{}},
   tab: (lsGet("pg.tab")||"today"), logDragon:null, behFilter:"all", setupSeg:"calc", openBeh:null, confirmDel:null,
   calc: Object.assign({L:120,W:60,H:60,mesh:true,depth:10,sub:"mix",lamp:"mvb",watts:80,rock:14,room:16,age:"juv"}, lsGet("pg.calc")||{}),
   tcheck: Object.assign({bask:"",cool:"",night:"",age:"juv",lamp:"mvb"}, lsGet("pg.tcheck")||{}),
@@ -484,7 +485,7 @@ async function loadAll(quiet){
   ]);
   if(dr.error||bu.error||lo.error){ if(!quiet){ S.mode="error"; render(); } return; }
   S.dragons=dr.data.map(fromDragon); S.bulbs=bu.data.map(fromBulb); S.logs=lo.data.map(fromLog); S.members=me.data||[];
-  if(se.data) S.config={supp:Object.assign({multiDay:5,plainDay:6,d3:false}, se.data.supp||{}), salad:{prepared:se.data.salad_prepared||null}, shop:se.data.shop||{}};
+  if(se.data) S.config={supp:Object.assign({plainDay:-1,d3:false}, se.data.supp||{}), salad:{prepared:se.data.salad_prepared||null}, shop:se.data.shop||{}};
   const paths=S.dragons.map(d=>d.photo).filter(p=>p && !photoUrls[p]);
   if(paths.length){ const {data}=await sb.storage.from("photos").createSignedUrls(paths, 86400); (data||[]).forEach(x=>{ if(x.signedUrl) photoUrls[x.path]=x.signedUrl; }); }
   S.mode="ready"; render();
@@ -515,11 +516,13 @@ function viewAuth(){
 }
 
 /* ---------------- domain logic ---------------- */
+const anyJuvenile = () => S.dragons.length ? S.dragons.some(d=>(monthsOld(d.hatch) ?? 6) < 12) : true;
+function multiDays(){ const p=S.config.supp; if(Array.isArray(p.multiDays) && p.multiDays.length) return p.multiDays.map(Number); return anyJuvenile() ? [2,5] : [5]; }
 function powderFor(dateStr){
-  const wd = parseD(dateStr).getDay(); const p=S.config.supp;
-  if(wd===Number(p.multiDay)) return {k:"multi", t:"מולטי־ויטמין", s:"פעם בשבוע, במקום סידן"};
-  if(wd===Number(p.plainDay)) return {k:"none", t:"בלי אבקה", s:"יום מנוחה מתוספים"};
-  return {k:"ca", t:"סידן", s: p.d3 ? "סידן עם D3" : "סידן בלי D3"};
+  const wd = parseD(dateStr).getDay(); const p=S.config.supp; const ca = p.d3 ? "סידן עם D3" : "סידן";
+  if(wd===Number(p.plainDay)) return {k:"none", t:"בלי אבקה", s:"יום דילוג (אופציונלי, מותר לדלג לפעמים)"};
+  if(multiDays().includes(wd)) return {k:"multi", t:"סידן + מולטי", s:ca+" על החרקים והסלט, ומולטי־ויטמין על הסלט"};
+  return {k:"ca", t:ca, s:"אבקה דקה על החרקים ועל הסלט"};
 }
 function weights(id){ return dLogs(id,"weight").filter(e=>e.d===id).map(e=>({date:e.ts.slice(0,10), g:Number(e.v.g)})).filter(w=>w.g>0).sort((a,b)=>a.date.localeCompare(b.date)); }
 function weightTrend(id){
@@ -555,11 +558,11 @@ function computeAlerts(){
     if(sh && sh.v.stage==="start" && daysSince(sh.ts.slice(0,10))<=14) A.push(["watch", d.name+" בהשלה", "לבדוק אצבעות וקצה זנב. אם נשאר עור, להשרות במים פושרים."]);
     if(sh && sh.v.stuck && sh.v.stuck.length) A.push(["act", d.name+": עור תקוע ב"+sh.v.stuck.join(" ו"), "אמבטיה פושרת ושחרור עדין. אם הקצה כהה או דחוס, לווטרינר."]);
     const bv = dLogs(d.id,"behavior").filter(e=>e.d===d.id && daysSince(e.ts.slice(0,10))<=3);
-    bv.forEach(e=>{ const b = BEHAVIORS.find(x=>x.id===e.v.b); if(b && b.st==="vet") A.push(["vet", d.name+": "+b.n, b.act]); });
+    bv.forEach(e=>{ const b = BEHAVIORS.find(x=>x.id===e.v.b); if(b && (b.st==="vet" || (b.juvVet && juv))) A.push(["vet", d.name+": "+b.n, b.act]); else if(b && b.juvVet) A.push(["watch", d.name+": "+b.n, b.act]); });
   });
   S.bulbs.forEach(b=>{
     if(!b.installed) return; const m = daysSince(b.installed)/30.4; const who = b.dragon && dragonById(b.dragon) ? " ("+dragonById(b.dragon).name+")" : "";
-    if(m>=12) A.push(["act", "להחליף נורה"+who, (b.label||"נורה")+" מותקנת "+Math.floor(m)+" חודשים. ה־UVB נחלש גם כשהיא עוד מאירה."]);
+    if(m>=12) A.push(["act", "לבדוק החלפת נורה"+who, (b.label||"נורה")+" מותקנת "+Math.floor(m)+" חודשים. ה־UVB נחלש גם כשהיא עוד מאירה. לפי הוראות היצרן או מד UV."]);
     else if(m>=10) A.push(["watch", "החלפת נורה מתקרבת"+who, "בעוד כ־"+Math.max(0,Math.round(12-m))+" חודשים. כדאי להזמין מראש."]);
   });
   const sp = S.config.salad.prepared;
@@ -609,11 +612,11 @@ function viewToday(){
     return h;
   }
   const al = computeAlerts().slice(0,5);
-  if(al.length) h += '<section class="sec"><div class="sec-h"><h2>מה דורש תשומת לב</h2></div><div class="alerts">'+al.map(a=>'<div class="alert '+a[0]+'"><div><b>'+esc(a[1])+'</b><span>'+esc(a[2])+'</span></div></div>').join("")+'</div></section>';
+  if(al.length) h += '<section class="sec"><div class="sec-h"><h2>מה דורש תשומת לב</h2></div><div class="alerts">'+al.map(a=>'<div class="alert '+a[0]+'"><div><b>'+esc(a[1])+'</b><span>'+esc(a[2])+'</span></div></div>').join("")+'</div><p class="note">הספים בהתראות הם הערכה זהירה של האפליקציה, לא כלל וטרינרי. העיקרון מ־'+srcLink("rfHealth","ReptiFiles")+': לשקול כל שבוע, וירידה פתאומית במשקל היא לרוב סימן למחלה.</p></section>';
   h += '<section class="sec"><div class="sec-h"><h2>החרדונים</h2><span class="hint">לחץ לרישום מהיר</span></div><div class="dgrid">'+S.dragons.map(dragonCard).join("")+'</div></section>';
   const salad = doneToday("salad"), mist = doneToday("mist"), ins = doneToday("insect");
   h += '<section class="sec"><div class="sec-h"><h2>השגרה של היום</h2></div>'+
-    '<div class="powder"><div class="big">'+esc(pw.t)+'</div><div class="small"><b>האבקה של הערב</b><br>'+esc(pw.s)+'</div></div>'+
+    '<div class="powder"><div class="big">'+esc(pw.t)+'</div><div class="small"><b>האבקה של היום</b><br>'+esc(pw.s)+'</div></div>'+
     '<div class="card routine">'+
       rtRow("salad", salad, "סלט בבוקר", "חופן לכל אחד מהקופסה, כמה טיפות מים", "06:00")+
       rtRow("mist", mist, "ריסוס", "עליהם, לא על כל הטרריום. בבוקר, כדי שיתייבש", "בוקר")+
@@ -658,7 +661,7 @@ function viewLog(){
 }
 function logLabel(e){
   const ul = {white:"לבן", yellow:"צהוב", orange:"כתום", green:"ירוק"};
-  const sl = {ca:"סידן", multi:"מולטי", none:"בלי אבקה"}; const al={all:"אכל הכול", some:"אכל חלק", none:"לא אכל"};
+  const sl = {ca:"סידן", multi:"סידן + מולטי", none:"בלי אבקה"}; const al={all:"אכל הכול", some:"אכל חלק", none:"לא אכל"};
   switch(e.type){
     case "weight": return ["weight", e.v.g+" ג׳", "שקילה"];
     case "poop": return ["poop", "קקי · אוראט "+(ul[e.v.urate]||"—"), e.v.note||""];
@@ -710,16 +713,16 @@ function viewFood(){
     fresh = '<div class="row" style="justify-content:space-between"><span class="small">הוכנה '+(age===0?"היום":"לפני "+age+" ימים")+' · '+esc(heDate(sp))+'</span><span class="chip '+(left>1?"ok":left===1?"watch":"act")+'">'+(left>0?"עוד "+left+" ימים":"להכין חדשה")+'</span></div><div class="fresh"><i style="width:'+pct+'%;background:'+(left>1?"var(--ok)":left===1?"var(--watch)":"var(--act)")+'"></i></div>';
   } else fresh = '<div class="small muted">עוד לא נרשמה הכנה. סמן כשאתה מכין קופסה.</div>';
   let h = '<section class="sec"><div class="sec-h"><h2>קופסת הסלט</h2><span class="hint">מחזיקה 3–4 ימים</span></div><div class="card" style="display:flex;flex-direction:column;gap:10px">'+fresh+
-    '<div class="small">בערך <b>2/3 ירוקים קצוצים</b> (קייל, כרוב סיני, אנדיב, עלי קולרבי, קצת כוסברה) + <b>1/3 מגורר</b> (דלורית וזוקיני). קופסה סגורה עם נייר סופג, במקרר. אבקה רק על החרקים.</div>'+
+    '<div class="small">בערך <b>2/3 ירוקים קצוצים</b> (קייל, כרוב סיני, אנדיב, עלי קולרבי, קצת כוסברה) + <b>1/3 מגורר</b> (דלורית וזוקיני). קופסה סגורה עם נייר סופג, במקרר. את הסידן מפזרים בכל הגשה, על הסלט ועל החרקים, ולא מערבבים מראש בקופסה.</div>'+
     '<button class="btn pri" data-act="saladPrep">הכנתי קופסה היום</button></div></section>';
   h += '<section class="sec"><div class="sec-h"><h2>סל שבועי</h2><button class="btn sm ghost" data-act="shopClear">נקה סימונים</button></div><div class="card">'+
     BASKET.map((it,i)=>{ const on=!!S.config.shop[i]; return '<button class="chk" data-act="shop" data-i="'+i+'" aria-pressed="'+on+'"><span class="bx">'+(on?ico("check",'style="width:16px;height:16px"'):"")+'</span><span class="lbl">'+esc(it)+'</span></button>'; }).join("")+
     '<div class="note" style="padding-top:8px">כל המוצרים נמצאו ברמי לוי אונליין. הסל מספיק לשני צעירים לשבועיים בערך, אבל את הקייל והכוסברה כדאי לקנות שוב באמצע.</div></div></section>';
-  ["base","some","fruit","no"].forEach(k=>{ const g=GREENS[k];
+  ["base","some","fruit","no","poor"].forEach(k=>{ const g=GREENS[k];
     h += '<section class="sec"><div class="sec-h"><h2>'+g.t+'</h2><span class="hint">'+g.note+'</span></div><div class="food '+(g.c==="acc"?"":g.c)+'">'+g.items.map(x=>'<span>'+esc(x)+'</span>').join("")+'</div></section>'; });
   h += '<p class="note">רשימות הירקות לפי '+srcLink("rfFood","ReptiFiles: תזונה")+'. תרד ומנגולד לא רעילים, אבל קושרים סידן, ולכן רק מדי פעם.</p>';
   h += '<section class="sec"><div class="sec-h"><h2>חרקים</h2></div><div class="card small" style="display:flex;flex-direction:column;gap:6px">'+
-    '<div><b>דוביה</b> כבסיס, בקערה עמוקה וחלקה (6–8 ס״מ) כדי שלא יברחו.</div><div><b>תולעי קמח</b> רק לפעמים. הרבה שריון ויחס סידן־זרחן גרוע.</div><div><b>גודל:</b> לא רחב יותר מהמרווח בין העיניים של החרדון.</div><div><b>האכלת המושבה</b> בירקות יום־יומיים לפני, כדי שמה שהם אכלו יגיע לחרדון.</div><div><b>כמות:</b> כמה שהוא אוכל ברצון בערך 10–15 דקות. המשקל אומר אם זה מספיק.</div><div>'+srcLink("rfFood")+' · '+srcLink("tufts")+'</div></div></section>';
+    '<div><b>דוביה</b> כבסיס, בקערה עמוקה וחלקה (6–8 ס״מ) כדי שלא יברחו.</div><div><b>תולעי קמח</b> רק כפינוק. הן שמנות, ועודף שלהן מוביל להשמנה.</div><div><b>גודל:</b> לא רחב יותר מהמרווח בין העיניים של החרדון.</div><div><b>האכלת המושבה</b> בירקות יום־יומיים לפני, כדי שמה שהם אכלו יגיע לחרדון.</div><div><b>כמות:</b> כמה שהוא אוכל ברצון בערך 10–15 דקות. המשקל אומר אם זה מספיק.</div><div>'+srcLink("rfFood")+' · '+srcLink("tufts")+'</div></div></section>';
   return h;
 }
 
@@ -873,7 +876,7 @@ function viewBuy(){
 }
 function viewLamps(){
   let h='<section class="sec"><div class="card list">'+LAMPS.map(l=>'<div class="li" style="align-items:flex-start"><div class="grow"><b>'+esc(l[0])+'</b><span>'+esc(l[1])+' · '+esc(l[3])+'</span></div><span class="chip '+l[2]+'">'+(l[2]==="ok"?"מומלץ":l[2]==="watch"?"בתנאים":"לא")+'</span></div>').join("")+'</div></section>';
-  h+='<section class="sec"><div class="sec-h"><h2>ההרכב המומלץ בארץ</h2></div><div class="card small" style="display:flex;flex-direction:column;gap:6px"><div><b>נורה משולבת</b> על טיימר: UV וחום בסיס, במרחק שהיצרן ממליץ.</div><div><b>הלוגן</b> לידה על <b>טרמוסטט מעמעם</b>: כיוונון החום לפי העונה, בלי לזוז מהמרחק של ה־UV.</div><div><b>קרמי</b> על טרמוסטט: רק בלילות קרים.</div><div class="muted">מחליפים נורה משולבת כל 12 חודשים. היא לא מראה כשה־UVB נחלש.</div><div>'+srcLink("rfTemp")+' · '+srcLink("uvg","UV Guide UK: מדידות נורות")+'</div></div></section>';
+  h+='<section class="sec"><div class="sec-h"><h2>ההרכב המומלץ בארץ</h2></div><div class="card small" style="display:flex;flex-direction:column;gap:6px"><div><b>נורה משולבת</b> על טיימר: UV וחום בסיס, במרחק שהיצרן ממליץ.</div><div><b>הלוגן</b> לידה על <b>טרמוסטט מעמעם</b>: כיוונון החום לפי העונה, בלי לזוז מהמרחק של ה־UV.</div><div><b>קרמי</b> על טרמוסטט: רק בלילות קרים.</div><div class="muted">את מועד ההחלפה קובע היצרן. ReptiFiles ממליצים על 12 חודשים לצינור T5 HO איכותי, ועל נורות כספית אין להם נתון. האפליקציה מתריעה אחרי 12 חודשים כברירת מחדל. הנורה לא מראה כשה־UVB נחלש, ולכן מד UV הוא הדרך היחידה לדעת.</div><div>'+srcLink("rfTemp")+' · '+srcLink("uvg","UV Guide UK: מדידות נורות")+'</div></div></section>';
   h+='<section class="sec"><div class="card callout vet"><b>הנורה האדומה</b><br>"היא לא מפריעה להם לישון" זה לא נכון. חרדונים רואים אור אדום, והשינה שלהם נפגעת. על האריזה לחפש Night, Red, Infrared או Moonlight, ולוותר.</div></section>';
   return h;
 }
@@ -899,7 +902,7 @@ function sheetFor(type, did){
   const d = dragonById(did); sheetState={type, did};
   if(type==="weight"){ const tr=weightTrend(did); openSheet(sheetHead("שקילה · "+esc(d.name))+'<div class="field"><label for="sw">משקל בגרם</label><input id="sw" type="number" inputmode="decimal" placeholder="'+(tr?tr.last.g:"")+'"></div><div class="note">באותו יום בשבוע, בבוקר, לפני אוכל.</div><button class="btn pri" data-act="saveSheet">שמירה</button>'); }
   if(type==="poop"){ sheetState.urate="white"; openSheet(sheetHead("קקי · "+esc(d.name))+'<div class="field"><label>צבע האוראט (החלק הלבן)</label>'+optsHTML("urate",[["white","לבן ורך"],["yellow","צהוב"],["orange","כתום / קשה"],["green","ירוק"]],"white")+'</div><div class="field"><label for="sn">הערה</label><input id="sn" placeholder="למשל: חול בצואה, נוזלי, ריח חריף"></div><button class="btn pri" data-act="saveSheet">שמירה</button>'); }
-  if(type==="insect"){ sheetState.ate="all"; sheetState.supp=powderFor(today()).k; openSheet(sheetHead("ארוחת חרקים · "+esc(d.name))+'<div class="field"><label>כמה אכל</label>'+optsHTML("ate",[["all","הכול"],["some","חלק"],["none","לא אכל"]],"all")+'</div><div class="field"><label>אבקה</label>'+optsHTML("supp",[["ca","סידן"],["multi","מולטי־ויטמין"],["none","בלי"]],sheetState.supp)+'</div><button class="btn pri" data-act="saveSheet">שמירה</button>'); }
+  if(type==="insect"){ sheetState.ate="all"; sheetState.supp=powderFor(today()).k; openSheet(sheetHead("ארוחת חרקים · "+esc(d.name))+'<div class="field"><label>כמה אכל</label>'+optsHTML("ate",[["all","הכול"],["some","חלק"],["none","לא אכל"]],"all")+'</div><div class="field"><label>אבקה</label>'+optsHTML("supp",[["ca","סידן"],["multi","סידן + מולטי"],["none","בלי"]],sheetState.supp)+'</div><button class="btn pri" data-act="saveSheet">שמירה</button>'); }
   if(type==="shed"){ sheetState.stage="start"; sheetState.stuck=[]; openSheet(sheetHead("השלה · "+esc(d.name))+'<div class="field"><label>שלב</label>'+optsHTML("stage",[["start","התחילה"],["end","הסתיימה"]],"start")+'</div><div class="field"><label>נשאר עור תקוע?</label><div class="opts">'+[["אצבעות","אצבעות"],["קצה הזנב","קצה הזנב"]].map(([v,l])=>'<button data-act="stuck" data-v="'+v+'" aria-pressed="false">'+l+'</button>').join("")+'</div></div><div class="note">לא לקלף בכוח. אמבטיה פושרת וריסוס בבוקר עוזרים לעור לרדת לבד.</div><button class="btn pri" data-act="saveSheet">שמירה</button>'); }
   if(type==="note"){ openSheet(sheetHead("הערה · "+esc(d.name))+'<div class="field"><label for="st">מה קרה</label><textarea id="st" rows="3"></textarea></div><button class="btn pri" data-act="saveSheet">שמירה</button>'); }
   if(type==="behavior"){ openSheet(sheetHead("איזו התנהגות? · "+esc(d.name))+'<div class="bgrid">'+BEHAVIORS.map(b=>'<button class="bcard" data-act="logBeh" data-b="'+b.id+'" data-id="'+esc(did)+'"><span class="art">'+dragonSVG(Object.assign({label:b.n},b.art))+'</span><b>'+esc(b.n)+'</b><span class="chip '+ST[b.st][1]+'" style="align-self:flex-start">'+ST[b.st][0]+'</span></button>').join("")+'</div>'); }
@@ -916,7 +919,7 @@ async function saveSheet(){
 function routineSheet(type){
   if(type==="insect"){
     const pw=powderFor(today()); sheetState={type:"routineInsect", supp:pw.k, ate:{}}; S.dragons.forEach(d=>sheetState.ate[d.id]="all");
-    openSheet(sheetHead("ארוחת ערב")+'<div class="small">אבקה של היום: <b>'+esc(pw.t)+'</b></div>'+optsHTML("supp",[["ca","סידן"],["multi","מולטי־ויטמין"],["none","בלי"]],pw.k)+
+    openSheet(sheetHead("ארוחת ערב")+'<div class="small">אבקה של היום: <b>'+esc(pw.t)+'</b></div>'+optsHTML("supp",[["ca","סידן"],["multi","סידן + מולטי"],["none","בלי"]],pw.k)+
       S.dragons.map(d=>'<div class="field"><label>'+esc(d.name)+'</label><div class="opts">'+[["all","הכול"],["some","חלק"],["none","לא אכל"]].map(([v,l])=>'<button data-act="ateFor" data-id="'+esc(d.id)+'" data-v="'+v+'" aria-pressed="'+(v==="all")+'">'+l+'</button>').join("")+'</div></div>').join("")+
       '<button class="btn pri" data-act="saveRoutineInsect">שמירה</button>');
   } else { addLog({d:"both", type, v:{}}).then(()=>toast(type==="salad"?"סלט סומן":"ריסוס סומן")).catch(()=>{}); }
@@ -946,8 +949,8 @@ function settingsSheet(){
   openSheet(sheetHead("הגדרות")+
     '<h3>חרדונים</h3>'+dr+'<button class="btn" data-act="addDragon">+ חרדון</button>'+
     '<h3>נורות</h3>'+(bl||'<div class="small muted">עוד לא נרשמו נורות.</div>')+'<button class="btn" data-act="addBulb">+ נורה</button>'+
-    '<h3>תוספים</h3><div class="card" style="display:flex;flex-direction:column;gap:10px"><div class="field"><label>יום מולטי־ויטמין</label>'+optsHTML("multiDay",DAYS.map((d,i)=>[i,d]),p.multiDay)+'</div><div class="field"><label>יום בלי אבקה</label>'+optsHTML("plainDay",DAYS.map((d,i)=>[i,d]).concat([[-1,"אין"]]),p.plainDay)+'</div>'+
-    '<button class="btn sm" data-act="d3" aria-pressed="'+!!p.d3+'">'+(p.d3?"סידן עם D3 ✓":"סידן בלי D3")+'</button><div class="note">עם נורת UV תקינה, הרבה מגדלים מוותרים על D3. אחרים נותנים D3 פעם־פעמיים בשבוע. זה נושא שנוי במחלוקת, אפשר לשאול את הווטרינר.</div></div>'+
+    '<h3>תוספים</h3><div class="card" style="display:flex;flex-direction:column;gap:10px"><div class="field"><label>ימי מולטי־ויטמין (על הסלט, בנוסף לסידן)</label><div class="opts">'+DAYS.map((d,i)=>'<button data-act="multiDayT" data-v="'+i+'" aria-pressed="'+multiDays().includes(i)+'">'+d+'</button>').join("")+'</div><div class="note">לפי ReptiFiles: פעמיים בשבוע עד גיל שנה ולנקבה מעוברת, פעם בשבוע לבוגר.</div></div><div class="field"><label>יום דילוג (לא חובה)</label>'+optsHTML("plainDay",DAYS.map((d,i)=>[i,d]).concat([[-1,"אין"]]),p.plainDay)+'</div>'+
+    '<button class="btn sm" data-act="d3" aria-pressed="'+!!p.d3+'">'+(p.d3?"סידן עם D3 ✓":"סידן בלי D3")+'</button><div class="note">ההנחה: יש נורת UVB תקינה. במצב כזה הרבה מגדלים מוותרים על D3. אחרים נותנים D3 פעם־פעמיים בשבוע. זה נושא שנוי במחלוקת, אפשר לשאול את הווטרינר.</div></div>'+
     householdHTML()+
     '<h3>חשבון</h3><div class="card row" style="justify-content:space-between"><span class="small muted" dir="ltr">'+esc(user&&user.email||"")+'</span><button class="btn sm danger" data-act="logout">יציאה</button></div>');
 }
@@ -965,7 +968,7 @@ function vetSummary(){
     lines.push("");
   });
   if(S.bulbs.length) lines.push("נורות: "+S.bulbs.map(b=>(b.label||"נורה")+" "+(b.watts?b.watts+"W ":"")+"מותקנת "+(b.installed?heDate(b.installed):"")).join(" · "));
-  lines.push("תוספים: סידן "+(S.config.supp.d3?"עם":"בלי")+" D3, מולטי־ויטמין ביום "+DAYS[S.config.supp.multiDay]);
+  lines.push("תוספים: סידן "+(S.config.supp.d3?"עם":"בלי")+" D3 על חרקים וסלט, מולטי־ויטמין בימים "+multiDays().map(i=>DAYS[i]).join(", "));
   const txt=lines.join("\n");
   openSheet(sheetHead("סיכום לווטרינר")+'<textarea id="vs" rows="14" style="border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--bg);width:100%;font-size:13px" readonly>'+esc(txt)+'</textarea><button class="btn pri" data-act="copyVs">העתקה</button>');
 }
@@ -1043,6 +1046,7 @@ document.addEventListener("click", async ev=>{
     case "dWatch": { const d=Object.assign({},dragonById(id)); d.watch=!d.watch; await saveDragon(d); settingsSheet(); break; }
     case "dSave": { const box=el.closest("[data-drag]"); const d=Object.assign({},dragonById(id)); d.name=box.querySelector('[data-df="name"]').value.trim()||d.name; d.hatch=box.querySelector('[data-df="hatch"]').value; await saveDragon(d); toast("נשמר"); break; }
     case "bSave": { const box=el.closest("[data-bulb]"); const b=Object.assign({},S.bulbs.find(x=>x.id===id)); b.label=box.querySelector('[data-bf="label"]').value.trim(); b.installed=box.querySelector('[data-bf="installed"]').value; b.dragon=box.querySelector('[data-bf="dragon"]').value; b.watts=Number(box.querySelector('[data-bf="watts"]').value)||null; await saveBulb(b); toast("נשמר"); settingsSheet(); break; }
+    case "multiDayT": { const v=Number(el.dataset.v); const cur=multiDays(); S.config.supp.multiDays = cur.includes(v) ? cur.filter(x=>x!==v) : cur.concat([v]).sort(); await saveConfig(); settingsSheet(); break; }
     case "d3": S.config.supp.d3=!S.config.supp.d3; await saveConfig(); settingsSheet(); break;
   }
 });
