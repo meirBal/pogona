@@ -44,7 +44,7 @@ async function remindersFor(hh: string, now: Date): Promise<Msg[] | null> {
     sb.from("dragons").select("id,name,hatch").eq("household_id", hh),
     sb.from("logs").select("type,ts").eq("household_id", hh).in("type", ["salad", "insect"]).gte("ts", recent),
     sb.from("logs").select("dragon_id,ts").eq("household_id", hh).eq("type", "weight").gte("ts", wSince).order("ts", { ascending: false }),
-    sb.from("household_settings").select("salad_prepared,location,supp").eq("household_id", hh).maybeSingle(),
+    sb.from("household_settings").select("salad_prepared,location,supp,colony").eq("household_id", hh).maybeSingle(),
     sb.from("bulbs").select("id,label,installed").eq("household_id", hh),
   ]);
   if (dr.error || lo.error || wt.error || st.error || bu.error) { console.error("query failed", hh, dr.error || lo.error || wt.error || st.error || bu.error); return null; }
@@ -67,6 +67,11 @@ async function remindersFor(hh: string, now: Date): Promise<Msg[] | null> {
     if (late.length) out.push({ kind: "weigh:" + late.map(d => d.id).sort().join(","), pref: "care", day: weekStart(L.day), title: "יום שקילה", body: `לשקול את ${late.map(d => d.name).join(" ו")}, בבוקר לפני אוכל.` });
     const sp = st.data?.salad_prepared as string | null;
     if (sp && daysBetween(sp, L.day) >= 3) out.push({ kind: "salad_box", pref: "care", title: daysBetween(sp, L.day) >= 4 ? "קופסת הסלט ישנה" : "הסלט נגמר מחר", body: "הזמן להכין קופסה חדשה: 2/3 ירוקים, 1/3 דלורית וזוקיני." });
+    const col = (st.data?.colony || {}) as Record<string, unknown>;
+    if (col.on) {
+      const need = [["food", "אוכל יבש"], ["water", "ירק לחות"]].filter(([k]) => { const ymd = (x: unknown) => typeof x === "string" && /^\d{4}-\d{2}-\d{2}$/.test(x) ? x : null; const v = ymd(col[k]) || ymd(col.started); return !!v && daysBetween(v, L.day) >= 3; }).map(([, l]) => l);
+      if (need.length) out.push({ kind: "colony", pref: "colony", title: "המושבה מחכה", body: `לדוביה: ${need.join(" ו")}. ירק שלא נאכל להוציא לפני שמעפש.` });
+    }
     for (const b of bu.data || []) {
       if (!b.installed) continue;
       const months = daysBetween(b.installed, L.day) / 30.4;
