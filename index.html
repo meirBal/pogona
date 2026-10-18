@@ -450,7 +450,7 @@ async function addLog(entry){
   Object.assign(tmp, fromLog(data)); render();
 }
 async function removeLog(id){ const prev=S.logs; S.logs=S.logs.filter(e=>e.id!==id); render(); const {error}=await sb.from("logs").delete().eq("id",id); if(error){ S.logs=prev; render(); fail(error);} }
-async function saveConfig(){ render(); const {error}=await sb.from("household_settings").upsert({household_id:S.hh, supp:S.config.supp, salad_prepared:S.config.salad.prepared||null, shop:S.config.shop||{}, vet:S.config.vet||{}, location:S.config.location||{}, colony:S.config.colony||{}, updated_at:new Date().toISOString()}); if(error) fail(error); }
+async function saveConfig(){ render(); const {error}=await sb.from("household_settings").upsert({household_id:S.hh, supp:S.config.supp, salad_prepared:S.config.salad.prepared||null, shop:S.config.shop||{}, vet:S.config.vet||{}, location:S.config.location||{}, updated_at:new Date().toISOString()}); if(error) fail(error); }
 async function saveDragon(d){
   const row={household_id:S.hh, name:d.name, sex:d.sex||"", hatch:d.hatch||null, watch:!!d.watch, photo_path:d.photo||null, sort:d.order||0};
   if(isNew(d.id)){ const {data,error}=await sb.from("dragons").insert(row).select().single(); if(error){ fail(error); return null; } const nd=fromDragon(data); S.dragons.push(nd); render(); return nd; }
@@ -479,10 +479,10 @@ async function pickHousehold(){
   if(joined){ const h=S.hhs.find(x=>x.id===joined); toast("הצטרפת ל"+(h?h.name:"בית")); }
   return true;
 }
-let live=null, liveT=null;
+let live=null, liveT=null, pendingReload=false;
 function subscribeLive(){
   if(live){ sb.removeChannel(live); live=null; }
-  const f = "household_id=eq."+S.hh, again = ()=>{ clearTimeout(liveT); liveT=setTimeout(()=>{ if(!$("#layer").innerHTML) loadAll(true); }, 400); };
+  const f = "household_id=eq."+S.hh, again = ()=>{ clearTimeout(liveT); liveT=setTimeout(()=>{ if(!$("#layer").innerHTML) loadAll(true); else pendingReload=true; }, 400); };
   live = sb.channel("hh-"+S.hh);
   ["logs","dragons","bulbs","household_settings","household_members"].forEach(t=> live.on("postgres_changes", {event:"*", schema:"public", table:t, filter:f}, again));
   live.subscribe();
@@ -757,12 +757,19 @@ function agePlanHTML(){
 /* ---------------- dubia colony ---------------- */
 const COL_PER_FEMALE_MONTH = 15; // conservative rough estimate at warm temps
 function colonyNeedWeek(){ // rough insects/week from the age plan
-  return S.dragons.reduce((t,d)=>{ const st=stageOf(d)||"juv"; return t + (st==="adult" ? 4*2 : st==="juv" ? 6*7 : 40); },0);
+  return S.dragons.reduce((t,d)=>{ const st=stageOf(d)||"juv"; return t + (st==="adult" ? 4*2 : st==="juv" ? 6*7 : 50); },0);
+}
+const isYmd = v => typeof v==="string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
+async function colPatch(patch){
+  S.config.colony = Object.assign({}, S.config.colony||{}, patch); render();
+  const {data,error} = await sb.rpc("colony_patch", {hh:S.hh, patch});
+  if(error){ fail(error); return; }
+  if(data && typeof data==="object"){ S.config.colony=data; render(); }
 }
 function colonyStatus(){
   const c=S.config.colony||{}; if(!c.on) return [];
-  const it=[["food","אוכל",3],["water","ג׳ל או ירק לחות",3],["clean","ניקוי לשלשת",30]];
-  return it.map(([k,l,lim])=>{ const ds=c[k]?daysSince(c[k]):null; return {k,l,ds,lvl: ds===null?"watch":ds>=lim*2?"act":ds>=lim?"watch":"ok"}; });
+  const it=[["food","אוכל",3,6],["water","ג׳ל או ירק לחות",3,6],["clean","ניקוי לשלשת",14,21]];
+  return it.map(([k,l,lim,lim2])=>{ const base = isYmd(c[k]) ? c[k] : isYmd(c.started) ? c.started : null; const ds=base?Math.max(0,daysSince(base)):null; return {k,l,ds,lvl: ds===null?"watch":ds>=lim2?"act":ds>=lim?"watch":"ok"}; });
 }
 function colonyHTML(){
   const c=S.config.colony||{};
@@ -771,18 +778,18 @@ function colonyHTML(){
   let h='<section class="sec"><div class="sec-h"><h2>מושבת דוביה</h2><button class="btn sm ghost" data-act="colEdit">עריכה</button></div>';
   h+='<div class="card" style="display:flex;flex-direction:column;gap:10px">';
   h+='<div class="row" style="justify-content:space-around;text-align:center"><div><div class="big num">'+f+'</div><div class="small muted">נקבות</div></div><div><div class="big num">'+m+'</div><div class="small muted">זכרים</div></div><div><div class="big num">~'+need+'</div><div class="small muted">חרקים בשבוע</div></div></div>';
-  h+='<div class="row wrap" style="gap:6px">'+st.map(x=>'<span class="chip '+x.lvl+'">'+esc(x.l)+': '+(x.ds===null?"לא נרשם":x.ds===0?"היום":"לפני "+x.ds+" ימים")+'</span>').join("")+'</div>';
+  h+='<div class="row wrap" style="gap:6px">'+st.map(x=>'<span class="chip '+x.lvl+'">'+esc(x.l)+': '+(x.ds===null?"לא נרשם":x.ds===0?"היום":"לפני "+x.ds+" ימים")+(isYmd(c[x.k])?"":" (מאז ההפעלה)")+'</span>').join("")+'</div>';
   h+='<div class="row wrap"><button class="btn sm pri" data-act="colMark" data-k="food">האכלתי</button><button class="btn sm" data-act="colMark" data-k="water">ג׳ל / ירק</button><button class="btn sm" data-act="colMark" data-k="clean">ניקיתי</button></div>';
   const ratioWarn = m && f && f/m < 3 ? '<div class="small" style="color:var(--watch)">יחס של פחות מ־3 נקבות לזכר. זכרים עודפים אפשר להאכיל לחרדונים.</div>' : '';
-  h+= ratioWarn + '<div class="small">'+(f>=femNeed ? 'בקירוב, '+f+' נקבות אמורות לכסות את הצריכה (~'+month+' בחודש), אם המושבה חמה מספיק.' : 'בקירוב צריך <b>'+femNeed+' נקבות בוגרות</b> כדי לכסות ~'+month+' חרקים בחודש. עד אז משלימים מקנייה.')+'</div>';
+  if(need) h+= ratioWarn + '<div class="small">'+(f>=femNeed ? 'בקירוב, '+f+' נקבות אמורות לכסות את הצריכה (~'+month+' בחודש), אם המושבה חמה מספיק.' : 'בקירוב צריך <b>'+femNeed+' נקבות בוגרות</b> כדי לכסות ~'+month+' חרקים בחודש. עד אז משלימים מקנייה.')+'</div>';
   h+='</div><details class="card small" style="margin-top:8px"><summary style="cursor:pointer;min-height:32px"><b>איך מחזיקים מושבה</b></summary><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">'+
-    '<div><b>קופסה:</b> קופסת פלסטיק עם קירות חלקים (דוביה לא מטפסים על פלסטיק חלק), חורי אוורור עם רשת, ותבניות ביצים מקרטון לעמידה.</div>'+
-    '<div><b>חום:</b> רבייה טובה רק בחום, בערך 30–35°. בטמפרטורת חדר הם חיים אבל כמעט לא מתרבים. משטח חימום מתחת לחלק מהקופסה, על טרמוסטט.</div>'+
-    '<div><b>אוכל:</b> מזון יבש (דגנים או מזון ייעודי) כל הזמן, וירק או פרי לחות כמה פעמים בשבוע במקום קערת מים, שבה הם טובעים. מוציאים ירק שלא נאכל אחרי יום־יומיים, לפני שמעפש.</div>'+
+    '<div><b>קופסה:</b> קופסת פלסטיק עם קירות חלקים (על קיר מחוספס דוביה מטפסים, על פלסטיק חלק לא), בנפח 40 ליטר לפחות, חורי אוורור עם רשת ותבניות ביצים מקרטון.</div>'+
+    '<div><b>חום ולחות:</b> לרבייה צריך 32–35° ולחות של בערך 60%. בטמפרטורת חדר הרבייה איטית מאוד. משטח חימום מתחת לחלק מהקופסה, על טרמוסטט.</div>'+
+    '<div><b>אוכל ומים:</b> מזון יבש (דגנים או מזון ייעודי) כל הזמן. מים רק כג׳ל או גבישי מים בצלוחית רדודה, בנפרד מהיבש, כי בקערת מים הם טובעים. ירק ופרי בתוספת, ומוציאים לפני שמעפש: עובש עלול להרוג את המושבה.</div>'+
     '<div><b>יחס:</b> בערך זכר אחד לכל 3–5 נקבות. לזכרים יש כנפיים מלאות, לנקבות כנפיים קצרות.</div>'+
     '<div><b>סבלנות:</b> לנימפות לוקח כמה חודשים להתבגר, ולכן מושבה חדשה מתחילה לספק רק אחרי כמה חודשים.</div>'+
-    '<div><b>לפני האכלה:</b> 24–48 שעות של ירק טוב, כדי שמה שהם אכלו יגיע לחרדון.</div>'+
-    '<div class="muted">המספרים כאן הם קירוב של האפליקציה. הקצב משתנה מאוד לפי חום ותזונה.</div></div></details></section>';
+    '<div><b>ניקיון:</b> להוציא לשלשת ושאריות כל שבוע־שבועיים.</div><div><b>לפני האכלה:</b> ירק טוב לדוביה שהולכים להגיש, כדי שמה שהם אכלו יגיע לחרדון.</div>'+
+    '<div class="muted">הערכת הנקבות והצריכה היא קירוב גס של האפליקציה, והקצב משתנה מאוד לפי חום ותזונה. תנאי האחזקה לפי <a class="src" href="https://www.dubiaroaches.com/pages/dubia-roach-care-sheet" target="_blank" rel="noopener">דף האחזקה של DubiaRoaches.com ↗</a> (מגדל מסחרי).</div></div></details></section>';
   return h;
 }
 function colonySheet(){
@@ -997,7 +1004,7 @@ function viewScan(){
 /* ---------------- sheets ---------------- */
 let sheetState = {};
 function openSheet(html){ $("#layer").innerHTML = '<div class="scrim" data-act="closeSheet"><div class="sheet" role="dialog" aria-modal="true" data-stop="1"><div class="grab"></div>'+html+'</div></div>'; const f=$("#layer .sheet input, #layer .sheet button.pri"); if(f) setTimeout(()=>f.focus(),30); }
-function closeSheet(){ $("#layer").innerHTML=""; sheetState={}; }
+function closeSheet(){ $("#layer").innerHTML=""; sheetState={}; if(pendingReload){ pendingReload=false; setTimeout(()=>loadAll(true),0); } }
 function sheetHead(t){ return '<div class="sheet-h"><h2>'+t+'</h2><button class="iconbtn" data-act="closeSheet" aria-label="סגירה">'+ico("x")+'</button></div>'; }
 function optsHTML(name, list, cur){ return '<div class="opts" data-opts="'+name+'">'+list.map(([v,l])=>'<button data-act="sopt" data-name="'+name+'" data-v="'+v+'" aria-pressed="'+(String(cur)===String(v))+'">'+l+'</button>').join("")+'</div>'; }
 function sheetFor(type, did){
@@ -1217,11 +1224,11 @@ document.addEventListener("click", async ev=>{
   switch(a){
     case "closeSheet": closeSheet(); break;
     case "settings": settingsSheet(); break;
-    case "colOn": S.config.colony=Object.assign({}, S.config.colony||{}, {on:true, started:(S.config.colony&&S.config.colony.started)||today()}); await saveConfig(); colonySheet(); break;
+    case "colOn": await colPatch({on:true, started:today(), food:null, water:null, clean:null}); colonySheet(); break;
     case "colEdit": colonySheet(); break;
-    case "colSave": { const n=v=>{ const x=Math.floor(Number(v)); return Number.isFinite(x)&&x>=0&&x<=100000 ? x : 0; }; S.config.colony=Object.assign({}, S.config.colony, {f:n($("#colF").value), m:n($("#colM").value)}); closeSheet(); await saveConfig(); toast("נשמר"); break; }
-    case "colOff": S.config.colony=Object.assign({}, S.config.colony, {on:false}); closeSheet(); await saveConfig(); break;
-    case "colMark": { const k=el.dataset.k; if(!["food","water","clean"].includes(k)) break; S.config.colony=Object.assign({}, S.config.colony, {[k]:today()}); await saveConfig(); toast("נרשם"); break; }
+    case "colSave": { const n=v=>{ const x=Math.floor(Number(v)); return Number.isFinite(x)&&x>=0&&x<=100000 ? x : 0; }; const patch={f:n($("#colF").value), m:n($("#colM").value)}; closeSheet(); await colPatch(patch); toast("נשמר"); break; }
+    case "colOff": closeSheet(); await colPatch({on:false}); break;
+    case "colMark": { const k=el.dataset.k; if(!["food","water","clean"].includes(k)) break; await colPatch({[k]:today()}); toast("נרשם"); break; }
     case "routine": routineSheet(el.dataset.type); break;
     case "quick": S.logDragon=id; S.tab="log"; lsSet("pg.tab","log"); render(); window.scrollTo(0,0); break;
     case "pickDragon": S.logDragon=id; S.confirmDel=null; render(); break;
