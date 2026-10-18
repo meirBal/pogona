@@ -250,7 +250,7 @@ const addDays = (s,n) => { const d = parseD(s); d.setDate(d.getDate()+n); return
 const heDate = s => parseD(s).toLocaleDateString("he-IL",{day:"numeric",month:"short"});
 const heDateLong = d => d.toLocaleDateString("he-IL",{weekday:"long",day:"numeric",month:"long"});
 const uid = () => Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4);
-const monthsOld = h => { if(!h) return null; const [y,m] = h.split("-").map(Number); const n = new Date(); return (n.getFullYear()-y)*12 + (n.getMonth()+1-m); };
+const monthsOld = h => { if(!h) return null; const [y,m] = String(h).split("-").map(Number); if(!Number.isFinite(y)||!Number.isFinite(m)) return null; const n = new Date(); const v=(n.getFullYear()-y)*12 + (n.getMonth()+1-m); return v<0 ? null : v; };
 const DAYS = ["ראשון","שני","שלישי","רביעי","חמישי","שישי","שבת"];
 const lsGet = k => { try { return JSON.parse(localStorage.getItem(k)); } catch(e){ return null; } };
 const lsSet = (k,v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} };
@@ -358,6 +358,7 @@ const ST = {ok:["תקין","ok"], watch:["לעקוב","watch"], act:["לפעול
 const SOURCES = {
   rf:{org:"ReptiFiles", t:"המדריך המלא לטיפול בחרדונים", u:"https://reptifiles.com/bearded-dragon-care/", d:"מדריך מקיף ומעודכן שנכתב על בסיס מחקר וייעוץ וטרינרי. המקור העיקרי שלנו לטמפרטורות, תאורה ותזונה."},
   rfTemp:{org:"ReptiFiles", t:"תאורה, חימום ולחות", u:"https://reptifiles.com/bearded-dragon/care-guide/bearded-dragon-temperature-humidity", d:"טמפרטורות באסקינג, צד קר ולילה, מרחקי UVB לפי סוג נורה, ולחות."},
+  rfEgg:{org:"ReptiFiles", t:"הטלת ביצים", u:"https://reptifiles.com/bearded-dragon-care/bearded-dragon-illnesses-health/egg-laying/", d:"סימני הטלה, קופסת הטלה, טיפול אחרי, ומתי זה חירום."},
   rfFood:{org:"ReptiFiles", t:"תזונה והאכלה", u:"https://reptifiles.com/bearded-dragon/care-guide/bearded-dragon-food", d:"כמה ומה להאכיל בכל גיל, ירקות בסיס, מה אסור, ולוח תוספים."},
   rfSize:{org:"ReptiFiles", t:"גודל טרריום ומגורים משותפים", u:"https://reptifiles.com/bearded-dragon/care-guide/bearded-dragon-enclosure-size", d:"גודל מינימלי לבוגר ולמה לא לשכן חרדונים יחד."},
   rfSub:{org:"ReptiFiles", t:"מצעים", u:"https://reptifiles.com/bearded-dragon/care-guide/bearded-dragon-substrate", d:"אילו מצעים מתאימים ואילו לא."},
@@ -432,7 +433,7 @@ S.logs=[]; S.authMsg=""; S.authBusy=false; S.hh=null; S.hhs=[]; S.members=[];
 const allLogs = () => S.logs;
 const dLogs = (id, type) => S.logs.filter(e => (e.d===id || e.d==="both") && (!type || e.type===type));
 const dragonById = id => S.dragons.find(d=>d.id===id);
-const fromDragon = r => ({id:r.id, name:r.name, sex:r.sex||"", hatch:r.hatch||"", watch:!!r.watch, photo:r.photo_path||null, order:r.sort||0});
+const fromDragon = r => ({id:r.id, name:r.name, sex:r.sex||"", hatch:(r.hatch||"").slice(0,7), watch:!!r.watch, photo:r.photo_path||null, order:r.sort||0});
 const fromBulb = r => ({id:r.id, label:r.label||"", type:r.type||"MVB", watts:r.watts, installed:r.installed||"", dragon:r.dragon_id||""});
 const fromLog = r => ({id:r.id, d:r.dragon_id||"both", type:r.type, v:r.v||{}, ts:r.ts, by:r.owner});
 const whoName = id => { const m=S.members.find(x=>x.user_id===id); return m ? String(m.display_name||"").split(" ")[0] : ""; };
@@ -531,18 +532,16 @@ function viewAuth(){
 
 /* ---------------- domain logic ---------------- */
 const STAGES = {
-  baby:{n:"תינוק", r:"עד 3 חודשים", ins:"חרקים 2–3 פעמים ביום, כל אחת כמה שאוכל ברצון בערך 10 דקות.", veg:"סלט קצוץ דק זמין כל יום, גם אם כמעט לא נוגע.", sup:"סידן בכל ארוחה, מולטי פעמיים בשבוע.", wt:"שוקלים כל שבוע ומצפים לעלייה קבועה."},
-  juv:{n:"צעיר", r:"3–12 חודשים", ins:"חרקים פעם ביום, כמה שאוכל ברצון בערך 10–15 דקות.", veg:"סלט כל בוקר. עדיין רוב התזונה חרקים, והיחס מתהפך בהדרגה לקראת גיל שנה.", sup:"סידן בכל ארוחה, מולטי פעמיים בשבוע.", wt:"שוקלים כל שבוע. עצירה של כמה שבועות בעלייה שווה בדיקה."},
-  sub:{n:"בוגר צעיר", r:"12–18 חודשים", ins:"מורידים בהדרגה: חרקים כל יומיים־שלושה.", veg:"סלט כל יום, והוא הופך לרוב התזונה.", sup:"סידן בכל ארוחה, מולטי פעם בשבוע.", wt:"הגדילה מאטה. המטרה עכשיו משקל יציב, לא עלייה."},
-  adult:{n:"בוגר", r:"מגיל 18 חודשים", ins:"חרקים 2–3 פעמים בשבוע. בוגר שמקבל חרקים כל יום נוטה להשמנה.", veg:"סלט כל יום, רוב התזונה.", sup:"סידן בכל ארוחה, מולטי פעם בשבוע.", wt:"שוקלים פעם בשבועיים־חודש. משקל יציב זה הסימן הטוב."}
+  baby:{n:"תינוק", r:"עד 3 חודשים", ins:"פעם ביום, כמה שהוא אוכל.", veg:"סלט קצוץ דק כל יום, כמה שהוא אוכל.", sup:"סידן על כל החרקים והסלט, מולטי פעמיים בשבוע."},
+  juv:{n:"צעיר", r:"עד שנה, בערך", ins:"פעם ביום, 5–6 חרקים בגודל הראש.", veg:"סלט כל יום, בנפח של בערך פי 3 מהחרקים.", sup:"סידן על כל החרקים והסלט, מולטי פעמיים בשבוע."},
+  adult:{n:"בוגר", r:"משנה, בערך", ins:"פעמיים בשבוע, 3–4 חרקים בגודל הראש. עודף חרקים מוביל להשמנה.", veg:"לפי ReptiFiles: 3 פעמים בשבוע, מנה בגודל הראש.", sup:"סידן על כל החרקים והסלט, מולטי פעם בשבוע."}
 };
-function stageOf(d){ const m = monthsOld(d.hatch); if(m===null) return null; return m<3?"baby":m<12?"juv":m<18?"sub":"adult"; }
-const DEF_INSECT_DAYS = [0,2,4];
+function stageOf(d){ const m = monthsOld(d.hatch); if(m===null) return null; return m<3?"baby":m<12?"juv":"adult"; }
+const DEF_INSECT_DAYS = [0,3];
 function insectDays(){ const v=S.config.supp.insectDays; return Array.isArray(v) && v.length ? v.map(Number) : DEF_INSECT_DAYS; }
 // young dragons (or unknown age) eat insects daily; from 12 months only on the chosen days
 function eatsInsects(d, dateStr){ const st=stageOf(d); if(!st || st==="baby" || st==="juv") return true; return insectDays().includes(parseD(dateStr).getDay()); }
-const anyAdultish = () => S.dragons.some(d=>{ const st=stageOf(d); return st==="sub"||st==="adult"; });
-const anyJuvenile = () => S.dragons.length ? S.dragons.some(d=>(monthsOld(d.hatch) ?? 6) < 12) : true;
+const anyJuvenile = () => !S.dragons.length || S.dragons.some(d=>{ const st=stageOf(d); return !st || st==="baby" || st==="juv"; });
 function multiDays(){ const p=S.config.supp; if(Array.isArray(p.multiDays) && p.multiDays.length) return p.multiDays.map(Number); return anyJuvenile() ? [2,5] : [5]; }
 function powderFor(dateStr){
   const wd = parseD(dateStr).getDay(); const p=S.config.supp; const ca = p.d3 ? "סידן עם D3" : "סידן";
@@ -567,8 +566,7 @@ function computeAlerts(){
       if(tr.last.g < tr.peak*0.9) A.push(["vet", d.name+": ירידה של יותר מ־10% מהשיא", "שיא "+tr.peak+" ג׳, עכשיו "+tr.last.g+" ג׳. כדאי ווטרינר זוחלים."]);
       else if(tr.pct!==null && tr.pct <= -5) A.push(["act", d.name+": ירד במשקל", Math.abs(tr.pct).toFixed(1)+"% מאז "+heDate(tr.ref.date)+". לבדוק טמפרטורות ותיאבון."]);
       else if(juv && tr.ref && daysSince(tr.ref.date)>=18 && tr.delta<=0) A.push(["watch", d.name+": לא עלה במשקל", "צעיר צריך לעלות בהדרגה. ממשיכים לשקול כל שבוע."]);
-      const wEvery = stageOf(d)==="adult" ? 14 : 7;
-      if(daysSince(tr.last.date)>=wEvery) A.push(["info", "יום שקילה: "+d.name, "השקילה האחרונה הייתה לפני "+daysSince(tr.last.date)+" ימים."]);
+      if(daysSince(tr.last.date)>=7) A.push(["info", "יום שקילה: "+d.name, "השקילה האחרונה הייתה לפני "+daysSince(tr.last.date)+" ימים."]);
     } else A.push(["info", "שקילה ראשונה: "+d.name, "משקל מטבח בגרמים, בבוקר לפני אוכל."]);
     const p = dLogs(d.id,"poop").filter(e=>e.d===d.id);
     if(p.length){
@@ -654,7 +652,7 @@ function viewToday(){
 }
 function insectRow(ins, pw){
   const eaters = S.dragons.filter(d=>eatsInsects(d, today()));
-  if(!eaters.length && !ins) return '<div class="rt" style="opacity:.7"><span class="ck"></span><span class="t"><b>אין חרקים היום</b><span>'+esc("ימי החרקים של הבוגרים: "+insectDays().map(i=>DAYS[i]).join(", ")+". סלט כרגיל.")+'</span></span><span class="when">—</span></div>';
+  if(!eaters.length && !ins) return '<button class="rt" data-act="routine" data-type="insect" style="opacity:.75"><span class="ck">'+ico("leaf",'style="width:16px;height:16px"')+'</span><span class="t"><b>אין חרקים היום</b><span>'+esc("ימי החרקים של הבוגרים: "+insectDays().map(i=>DAYS[i]).join(", ")+". סלט כרגיל. נתתם בכל זאת? לחצו לרישום.")+'</span></span><span class="when">—</span></button>';
   const who = eaters.length && eaters.length<S.dragons.length ? "רק ל"+eaters.map(d=>d.name).join(" ו")+" · " : "";
   return rtRow("insect", ins, "חרקים מאובקים", who+"דוביה בקערה עמוקה · "+pw.t+" · להוציא שאריות סלט", "17:00");
 }
@@ -748,11 +746,12 @@ function agePlanHTML(){
   let h = '<section class="sec"><div class="sec-h"><h2>תוכנית לפי גיל</h2><span class="hint">'+srcLink("rfFood","ReptiFiles")+'</span></div>';
   Object.keys(STAGES).filter(k=>byStage[k]).forEach(k=>{ const g=STAGES[k];
     h += '<div class="card small" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"><div class="row" style="justify-content:space-between"><b>'+esc(byStage[k].map(d=>d.name).join(" ו"))+'</b><span class="chip">'+g.n+' · '+g.r+'</span></div>'+
-      '<div><b>חרקים:</b> '+esc(g.ins)+(k==="sub"||k==="adult"?' <span class="muted">(ימים: '+esc(insectDays().map(i=>DAYS[i]).join(", "))+', משנים בהגדרות)</span>':'')+'</div><div><b>ירק:</b> '+esc(g.veg)+'</div><div><b>תוספים:</b> '+esc(g.sup)+'</div><div><b>משקל:</b> '+esc(g.wt)+'</div></div>';
+      '<div><b>חרקים:</b> '+esc(g.ins)+(k==="adult"?' <span class="muted">(ימים: '+esc(insectDays().map(i=>DAYS[i]).join(", "))+', משנים בהגדרות)</span>':'')+'</div><div><b>ירק:</b> '+esc(g.veg)+'</div><div><b>תוספים:</b> '+esc(g.sup)+'</div></div>';
   });
+  h += '<p class="note">ReptiFiles מחלק אחרי גיל 3 חודשים לפי אורך: צעיר עד 25 ס״מ, בוגר מעליו. האפליקציה משתמשת בגיל שנה כקירוב. שוקלים כל שבוע בכל גיל.</p>';
   if(noAge.length) h += '<div class="card small">חסר חודש בקיעה ל'+esc(noAge.map(d=>d.name).join(" ו"))+'. בלי גיל האפליקציה מתייחסת אליהם כצעירים. <button class="btn sm" data-act="settings">עדכון</button></div>';
-  const fem = S.dragons.filter(d=>d.sex==="F" && (monthsOld(d.hatch)??0)>=10);
-  if(fem.length) h += '<div class="callout watch small" style="margin-top:8px"><b>'+esc(fem.map(d=>d.name).join(" ו"))+': הטלת ביצים.</b> נקבה בוגרת יכולה להטיל ביצים גם בלי זכר. סימנים: חפירה עקשנית, חוסר מנוחה, ירידה בתיאבון ובטן מלאה. מכינים קופסת הטלה עם חול לח שמחזיק צורה, ואחרי ההטלה מגדילים סידן ומולטי. אם היא מתאמצת או חלשה ולא מטילה, זה מצב חירום: ווטרינר. '+srcLink("rfHealth","ReptiFiles: בריאות")+'</div>';
+  const fem = S.dragons.filter(d=>d.sex==="F" && stageOf(d)!=="baby");
+  if(fem.length) h += '<div class="callout watch small" style="margin-top:8px"><b>'+esc(fem.map(d=>d.name).join(" ו"))+': הטלת ביצים.</b> נקבה מתבגרת יכולה להטיל ביצים לא מופרות גם בלי זכר. סימנים: חפירה וסיבובים עצבניים, בטן מלאה, ירידה בתיאבון, עצבנות. קופסת הטלה: כ־15 ס״מ חול לח שמחזיק צורה, עם חום מעליה. בזמן הריון: 4–5 חרקים פעמיים בשבוע ומולטי פעמיים בשבוע. אחרי ההטלה: 3 ימים חרקים וסלט עם סידן כל יום, אמבטיה פושרת ובאסקינג. בטן מלאה עם חולשה וחוסר תיאבון בלי הטלה, או ניסיונות כושלים: ווטרינר מיד. '+srcLink("rfEgg","ReptiFiles: הטלה")+'</div>';
   return h+'</section>';
 }
 function viewFood(){
@@ -770,7 +769,7 @@ function viewFood(){
     h += '<section class="sec"><div class="sec-h"><h2>'+g.t+'</h2><span class="hint">'+g.note+'</span></div><div class="food '+(g.c==="acc"?"":g.c)+'">'+g.items.map(x=>'<span>'+esc(x)+'</span>').join("")+'</div></section>'; });
   h += '<p class="note">רשימות הירקות לפי '+srcLink("rfFood","ReptiFiles: תזונה")+'. תרד ומנגולד לא רעילים, אבל קושרים סידן, ולכן רק מדי פעם.</p>';
   h += '<section class="sec"><div class="sec-h"><h2>חרקים</h2></div><div class="card small" style="display:flex;flex-direction:column;gap:6px">'+
-    '<div><b>דוביה</b> כבסיס, בקערה עמוקה וחלקה (6–8 ס״מ) כדי שלא יברחו.</div><div><b>תולעי קמח</b> רק כפינוק. הן שמנות, ועודף שלהן מוביל להשמנה.</div><div><b>גודל:</b> לא רחב יותר מהמרווח בין העיניים של החרדון.</div><div><b>האכלת המושבה</b> בירקות יום־יומיים לפני, כדי שמה שהם אכלו יגיע לחרדון.</div><div><b>כמות:</b> כמה שהוא אוכל ברצון בערך 10–15 דקות. המשקל אומר אם זה מספיק.</div><div>'+srcLink("rfFood")+' · '+srcLink("tufts")+'</div></div></section>';
+    '<div><b>דוביה</b> כבסיס, בקערה עמוקה וחלקה (6–8 ס״מ) כדי שלא יברחו.</div><div><b>תולעי קמח</b> רק כפינוק. הן שמנות, ועודף שלהן מוביל להשמנה.</div><div><b>גודל:</b> לא רחב יותר מהמרווח בין העיניים של החרדון.</div><div><b>האכלת המושבה</b> בירקות יום־יומיים לפני, כדי שמה שהם אכלו יגיע לחרדון.</div><div><b>כמות:</b> לפי הגיל, בתוכנית למעלה. השקילה השבועית אומרת אם זה מספיק.</div><div>'+srcLink("rfFood")+' · '+srcLink("tufts")+'</div></div></section>';
   return h;
 }
 
@@ -925,7 +924,7 @@ function vetsHTML(){
 }
 function vetsSheet(){ openSheet(sheetHead("ווטרינרים לזוחלים")+vetsHTML()); setTimeout(()=>{ if(document.activeElement && document.activeElement.blur) document.activeElement.blur(); }, 60); }
 function viewSources(){
-  const groups=[["טיפול ומגורים",["rf","rfTemp","rfFood","rfSize","rfSub"]],["בריאות (מקורות וטרינריים)",["vca","rvc","tufts","rfHealth"]],["נורות UV",["uvg"]],["מציאת ווטרינר",["arav"]]];
+  const groups=[["טיפול ומגורים",["rf","rfTemp","rfFood","rfSize","rfSub"]],["בריאות (מקורות וטרינריים)",["vca","rvc","tufts","rfHealth","rfEgg"]],["נורות UV",["uvg"]],["מציאת ווטרינר",["arav"]]];
   let h='<section class="sec"><div class="card small">המידע באפליקציה מבוסס על המקורות האלה. כשיש מחלוקת בין מקורות, אנחנו כותבים את זה. אנחנו לא תחליף לווטרינר.</div></section>';
   groups.forEach(([t,ks])=>{ h+='<section class="sec"><div class="sec-h"><h2>'+t+'</h2></div><div class="card list">'+ks.map(k=>{const x=SOURCES[k]; return '<a class="li srcrow" href="'+x.u+'" target="_blank" rel="noopener"><div class="grow"><b>'+esc(x.t)+'</b><span>'+esc(x.org)+' · '+esc(x.d)+'</span></div><span class="chip bas">↗</span></a>';}).join("")+'</div></section>'; });
   h+='<p class="note">כל המקורות באנגלית. הקישורים נפתחים בלשונית חדשה.</p>';
@@ -984,9 +983,9 @@ async function saveSheet(){
 }
 function routineSheet(type){
   if(type==="insect"){
-    const pw=powderFor(today()); sheetState={type:"routineInsect", supp:pw.k, ate:{}}; S.dragons.forEach(d=>sheetState.ate[d.id]="all");
+    const pw=powderFor(today()); sheetState={type:"routineInsect", supp:pw.k, ate:{}}; S.dragons.forEach(d=>sheetState.ate[d.id]=eatsInsects(d,today())?"all":"skip");
     openSheet(sheetHead("ארוחת ערב")+'<div class="small">אבקה של היום: <b>'+esc(pw.t)+'</b></div>'+optsHTML("supp",[["ca","סידן"],["multi","סידן + מולטי"],["none","בלי"]],pw.k)+
-      S.dragons.map(d=>'<div class="field"><label>'+esc(d.name)+'</label><div class="opts">'+[["all","הכול"],["some","חלק"],["none","לא אכל"]].map(([v,l])=>'<button data-act="ateFor" data-id="'+esc(d.id)+'" data-v="'+v+'" aria-pressed="'+(v==="all")+'">'+l+'</button>').join("")+'</div></div>').join("")+
+      S.dragons.map(d=>'<div class="field"><label>'+esc(d.name)+'</label><div class="opts">'+[["all","הכול"],["some","חלק"],["none","לא אכל"],["skip","לא היום"]].map(([v,l])=>'<button data-act="ateFor" data-id="'+esc(d.id)+'" data-v="'+v+'" aria-pressed="'+(v===sheetState.ate[d.id])+'">'+l+'</button>').join("")+'</div></div>').join("")+
       '<button class="btn pri" data-act="saveRoutineInsect">שמירה</button>');
   } else { addLog({d:"both", type, v:{}}).then(()=>toast(type==="salad"?"סלט סומן":"ריסוס סומן")).catch(()=>{}); }
 }
@@ -1004,7 +1003,7 @@ function showTriage(r){ const ov=S.config.vet||{}; openSheet(sheetHead("התוצ
 
 function settingsSheet(){
   const dr = S.dragons.map(d=>'<div class="card" style="display:flex;flex-direction:column;gap:8px" data-drag="'+esc(d.id)+'">'+
-    '<div class="fgrid2"><div class="field"><label>שם</label><input data-df="name" value="'+esc(d.name)+'"></div><div class="field"><label>חודש בקיעה משוער</label><input type="month" data-df="hatch" value="'+esc(d.hatch||"")+'"></div></div>'+
+    '<div class="fgrid2"><div class="field"><label>שם</label><input data-df="name" value="'+esc(d.name)+'"></div><div class="field"><label>חודש בקיעה משוער</label><input type="month" data-df="hatch" value="'+esc((d.hatch||"").slice(0,7))+'"></div></div>'+
     '<div class="row wrap"><div class="opts">'+[["F","נקבה"],["M","זכר"],["","לא ידוע"]].map(([v,l])=>'<button data-act="dSex" data-id="'+esc(d.id)+'" data-v="'+v+'" aria-pressed="'+((d.sex||"")===v)+'">'+l+'</button>').join("")+'</div><button class="btn sm" data-act="dWatch" data-id="'+esc(d.id)+'" aria-pressed="'+!!d.watch+'">'+(d.watch?"במעקב ✓":"סמן למעקב")+'</button></div>'+
     (true?'<div class="row"><label class="btn sm" for="ph_'+esc(d.id)+'">'+(d.photo?"החלף תמונה":"הוסף תמונה")+'</label><input hidden id="ph_'+esc(d.id)+'" type="file" accept="image/*" data-photo="'+esc(d.id)+'"></div>':'')+
     '<div class="row"><button class="btn sm pri" data-act="dSave" data-id="'+esc(d.id)+'">שמירה</button></div></div>').join("");
@@ -1015,7 +1014,7 @@ function settingsSheet(){
   openSheet(sheetHead("הגדרות")+
     '<h3>חרדונים</h3>'+dr+'<button class="btn" data-act="addDragon">+ חרדון</button>'+
     '<h3>נורות</h3>'+(bl||'<div class="small muted">עוד לא נרשמו נורות.</div>')+'<button class="btn" data-act="addBulb">+ נורה</button>'+
-    '<h3>האכלה ותוספים</h3><div class="card" style="display:flex;flex-direction:column;gap:10px"><div class="field"><label>ימי חרקים לחרדונים מגיל שנה</label><div class="opts">'+DAYS.map((d,i)=>'<button data-act="insDayT" data-v="'+i+'" aria-pressed="'+insectDays().includes(i)+'">'+d+'</button>').join("")+'</div><div class="note">מתחת לגיל שנה (או בלי גיל רשום) חרקים כל יום, בלי קשר לימים האלה. ההתראות בטלפון מתעדכנות בהתאם.</div></div><div class="field"><label>ימי מולטי־ויטמין (על הסלט, בנוסף לסידן)</label><div class="opts">'+DAYS.map((d,i)=>'<button data-act="multiDayT" data-v="'+i+'" aria-pressed="'+multiDays().includes(i)+'">'+d+'</button>').join("")+'</div><div class="note">לפי ReptiFiles: פעמיים בשבוע עד גיל שנה ולנקבה מעוברת, פעם בשבוע לבוגר.</div></div><div class="field"><label>יום דילוג (לא חובה)</label>'+optsHTML("plainDay",DAYS.map((d,i)=>[i,d]).concat([[-1,"אין"]]),p.plainDay)+'</div>'+
+    '<h3>האכלה ותוספים</h3><div class="card" style="display:flex;flex-direction:column;gap:10px"><div class="field"><label>ימי חרקים לחרדונים מגיל שנה</label><div class="opts">'+DAYS.map((d,i)=>'<button data-act="insDayT" data-v="'+i+'" aria-pressed="'+insectDays().includes(i)+'">'+d+'</button>').join("")+'</div><div class="note">לפי ReptiFiles: בוגר מקבל חרקים פעמיים בשבוע. מתחת לגיל שנה (או בלי גיל רשום) חרקים כל יום, בלי קשר לימים האלה. ההתראות בטלפון מתעדכנות בהתאם.</div></div><div class="field"><label>ימי מולטי־ויטמין (על הסלט, בנוסף לסידן)</label><div class="opts">'+DAYS.map((d,i)=>'<button data-act="multiDayT" data-v="'+i+'" aria-pressed="'+multiDays().includes(i)+'">'+d+'</button>').join("")+'</div><div class="note">לפי ReptiFiles: פעמיים בשבוע עד גיל שנה ולנקבה מעוברת, פעם בשבוע לבוגר.</div></div><div class="field"><label>יום דילוג (לא חובה)</label>'+optsHTML("plainDay",DAYS.map((d,i)=>[i,d]).concat([[-1,"אין"]]),p.plainDay)+'</div>'+
     '<button class="btn sm" data-act="d3" aria-pressed="'+!!p.d3+'">'+(p.d3?"סידן עם D3 ✓":"סידן בלי D3")+'</button><div class="note">ההנחה: יש נורת UVB תקינה. במצב כזה הרבה מגדלים מוותרים על D3. אחרים נותנים D3 פעם־פעמיים בשבוע. זה נושא שנוי במחלוקת, אפשר לשאול את הווטרינר.</div></div>'+
     householdHTML()+pushHTML()+
     '<h3>מיקום למזג אוויר</h3><div class="card row" style="justify-content:space-between"><span class="small">'+esc((S.config.location||{}).name||"לא נבחר")+'</span><button class="btn sm" data-act="wxSetup">'+((S.config.location||{}).lat?"שינוי":"בחירת עיר")+'</button></div>'+
@@ -1189,7 +1188,7 @@ document.addEventListener("click", async ev=>{
       if(n==="multiDay"||n==="plainDay"){ S.config.supp[n]=Number(v); saveConfig(); } else sheetState[n]=v; break; }
     case "stuck": { const on = el.getAttribute("aria-pressed")!=="true"; el.setAttribute("aria-pressed", String(on)); const v=el.dataset.v; sheetState.stuck = on ? [...new Set([...(sheetState.stuck||[]), v])] : (sheetState.stuck||[]).filter(x=>x!==v); break; }
     case "ateFor": el.parentElement.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed", String(b===el))); sheetState.ate[id]=el.dataset.v; break;
-    case "saveRoutineInsect": { const st=sheetState; closeSheet(); try{ for(const d of S.dragons){ await addLog({d:d.id, type:"insect", v:{ate:st.ate[d.id]||"all", supp:st.supp}}); } toast("ארוחת ערב נרשמה"); }catch(e){} break; }
+    case "saveRoutineInsect": { const st=sheetState; closeSheet(); try{ for(const d of S.dragons){ if(st.ate[d.id]==="skip") continue; await addLog({d:d.id, type:"insect", v:{ate:st.ate[d.id]||"all", supp:st.supp}}); } toast("ארוחת ערב נרשמה"); }catch(e){} break; }
     case "saveSheet": saveSheet(); break;
     case "logBeh": closeSheet(); try{ await addLog({d:id, type:"behavior", v:{b:el.dataset.b}}); toast("נרשם"); }catch(e){} break;
     case "delLog": if(S.confirmDel===id){ S.confirmDel=null; removeLog(id); } else { S.confirmDel=id; render(); } break;
