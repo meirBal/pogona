@@ -396,48 +396,76 @@ const S = {
 };
 const SB_URL="https://xexwkfccvpfnymnycbjv.supabase.co", SB_KEY="sb_publishable_67HWGFHXiJYpWzBHburzyA_98z_ZBio";
 let sb=null, user=null, photoUrls={}; const sample=null; let canImages=false;
-S.logs=[]; S.authMsg=""; S.authBusy=false;
+S.logs=[]; S.authMsg=""; S.authBusy=false; S.hh=null; S.hhs=[]; S.members=[];
 const allLogs = () => S.logs;
 const dLogs = (id, type) => S.logs.filter(e => (e.d===id || e.d==="both") && (!type || e.type===type));
 const dragonById = id => S.dragons.find(d=>d.id===id);
 const fromDragon = r => ({id:r.id, name:r.name, sex:r.sex||"", hatch:r.hatch||"", watch:!!r.watch, photo:r.photo_path||null, order:r.sort||0});
 const fromBulb = r => ({id:r.id, label:r.label||"", type:r.type||"MVB", watts:r.watts, installed:r.installed||"", dragon:r.dragon_id||""});
-const fromLog = r => ({id:r.id, d:r.dragon_id||"both", type:r.type, v:r.v||{}, ts:r.ts});
+const fromLog = r => ({id:r.id, d:r.dragon_id||"both", type:r.type, v:r.v||{}, ts:r.ts, by:r.owner});
+const whoName = id => { const m=S.members.find(x=>x.user_id===id); return m ? String(m.display_name||"").split(" ")[0] : ""; };
+const multi = () => S.members.length > 1;
 const isNew = id => !id || String(id).startsWith("new");
 
 /* ---------------- persistence (Supabase) ---------------- */
 function fail(e){ console.error(e); toast("השמירה נכשלה. בדוק את החיבור ונסה שוב."); }
 async function addLog(entry){
-  const row={dragon_id: entry.d==="both"?null:entry.d, type:entry.type, v:entry.v||{}, ts: entry.ts||new Date().toISOString()};
-  const tmp=Object.assign({}, entry, {id:"tmp"+uid(), ts:row.ts}); S.logs.unshift(tmp); render();
+  const row={household_id:S.hh, dragon_id: entry.d==="both"?null:entry.d, type:entry.type, v:entry.v||{}, ts: entry.ts||new Date().toISOString()};
+  const tmp=Object.assign({}, entry, {id:"tmp"+uid(), ts:row.ts, by:user.id}); S.logs.unshift(tmp); render();
   const {data,error}=await sb.from("logs").insert(row).select().single();
   if(error){ S.logs=S.logs.filter(x=>x!==tmp); render(); fail(error); throw error; }
   Object.assign(tmp, fromLog(data)); render();
 }
 async function removeLog(id){ const prev=S.logs; S.logs=S.logs.filter(e=>e.id!==id); render(); const {error}=await sb.from("logs").delete().eq("id",id); if(error){ S.logs=prev; render(); fail(error);} }
-async function saveConfig(){ render(); const {error}=await sb.from("settings").upsert({owner:user.id, supp:S.config.supp, salad_prepared:S.config.salad.prepared||null, shop:S.config.shop||{}, updated_at:new Date().toISOString()}); if(error) fail(error); }
+async function saveConfig(){ render(); const {error}=await sb.from("household_settings").upsert({household_id:S.hh, supp:S.config.supp, salad_prepared:S.config.salad.prepared||null, shop:S.config.shop||{}, updated_at:new Date().toISOString()}); if(error) fail(error); }
 async function saveDragon(d){
-  const row={name:d.name, sex:d.sex||"", hatch:d.hatch||null, watch:!!d.watch, photo_path:d.photo||null, sort:d.order||0};
+  const row={household_id:S.hh, name:d.name, sex:d.sex||"", hatch:d.hatch||null, watch:!!d.watch, photo_path:d.photo||null, sort:d.order||0};
   if(isNew(d.id)){ const {data,error}=await sb.from("dragons").insert(row).select().single(); if(error){ fail(error); return null; } const nd=fromDragon(data); S.dragons.push(nd); render(); return nd; }
   const i=S.dragons.findIndex(x=>x.id===d.id); if(i>=0) S.dragons[i]=d; render();
   const {error}=await sb.from("dragons").update(row).eq("id",d.id); if(error) fail(error); return d;
 }
 async function saveBulb(b){
-  const row={label:b.label||"", type:b.type||"MVB", watts:b.watts||null, installed:b.installed||null, dragon_id:b.dragon||null};
+  const row={household_id:S.hh, label:b.label||"", type:b.type||"MVB", watts:b.watts||null, installed:b.installed||null, dragon_id:b.dragon||null};
   if(isNew(b.id)){ const {data,error}=await sb.from("bulbs").insert(row).select().single(); if(error){ fail(error); return null; } const nb=fromBulb(data); S.bulbs.push(nb); render(); return nb; }
   const i=S.bulbs.findIndex(x=>x.id===b.id); if(i>=0) S.bulbs[i]=b; render();
   const {error}=await sb.from("bulbs").update(row).eq("id",b.id); if(error) fail(error); return b;
 }
-async function loadAll(){
-  const since=new Date(Date.now()-400*864e5).toISOString();
-  const [dr,bu,lo,se]=await Promise.all([
-    sb.from("dragons").select("*").order("sort").order("created_at"),
-    sb.from("bulbs").select("*").order("installed"),
-    sb.from("logs").select("*").gte("ts",since).order("ts",{ascending:false}).limit(5000),
-    sb.from("settings").select("*").maybeSingle()
+async function pickHousehold(){
+  let joined=null;
+  const code = (()=>{ try{ return localStorage.getItem("pg.join"); }catch(e){ return null; } })();
+  if(code){
+    try{ localStorage.removeItem("pg.join"); }catch(e){}
+    const j = await sb.rpc("join_household", {invite: code});
+    if(j.error) toast("קישור ההזמנה לא תקף או שפג תוקפו"); else { joined=j.data; lsSet("pg.hh", joined); }
+  }
+  const ms = await sb.from("household_members").select("household_id, role, households(name)").eq("user_id", user.id);
+  S.hhs = (ms.data||[]).map(m=>({id:m.household_id, role:m.role, name:(m.households&&m.households.name)||"הבית"}));
+  let want = joined || lsGet("pg.hh");
+  if(!S.hhs.some(h=>h.id===want)){ const e = await sb.rpc("ensure_household"); if(e.error) return false; want=e.data; if(!S.hhs.some(h=>h.id===want)) S.hhs.push({id:want, role:"owner", name:"הבית שלי"}); }
+  S.hh = want; lsSet("pg.hh", want);
+  if(joined){ const h=S.hhs.find(x=>x.id===joined); toast("הצטרפת ל"+(h?h.name:"בית")); }
+  return true;
+}
+let live=null, liveT=null;
+function subscribeLive(){
+  if(live){ sb.removeChannel(live); live=null; }
+  const f = "household_id=eq."+S.hh, again = ()=>{ clearTimeout(liveT); liveT=setTimeout(()=>{ if(!$("#layer").innerHTML) loadAll(true); }, 400); };
+  live = sb.channel("hh-"+S.hh);
+  ["logs","dragons","bulbs","household_settings","household_members"].forEach(t=> live.on("postgres_changes", {event:"*", schema:"public", table:t, filter:f}, again));
+  live.subscribe();
+}
+async function loadAll(quiet){
+  if(!S.hh){ const ok = await pickHousehold(); if(!ok){ S.mode="error"; render(); return; } subscribeLive(); }
+  const since=new Date(Date.now()-400*864e5).toISOString(), H=S.hh;
+  const [dr,bu,lo,se,me]=await Promise.all([
+    sb.from("dragons").select("*").eq("household_id",H).order("sort").order("created_at"),
+    sb.from("bulbs").select("*").eq("household_id",H).order("installed"),
+    sb.from("logs").select("*").eq("household_id",H).gte("ts",since).order("ts",{ascending:false}).limit(5000),
+    sb.from("household_settings").select("*").eq("household_id",H).maybeSingle(),
+    sb.from("household_members").select("user_id, role, display_name, joined_at").eq("household_id",H).order("joined_at")
   ]);
-  if(dr.error||bu.error||lo.error){ S.mode="error"; render(); return; }
-  S.dragons=dr.data.map(fromDragon); S.bulbs=bu.data.map(fromBulb); S.logs=lo.data.map(fromLog);
+  if(dr.error||bu.error||lo.error){ if(!quiet){ S.mode="error"; render(); } return; }
+  S.dragons=dr.data.map(fromDragon); S.bulbs=bu.data.map(fromBulb); S.logs=lo.data.map(fromLog); S.members=me.data||[];
   if(se.data) S.config={supp:Object.assign({multiDay:5,plainDay:6,d3:false}, se.data.supp||{}), salad:{prepared:se.data.salad_prepared||null}, shop:se.data.shop||{}};
   const paths=S.dragons.map(d=>d.photo).filter(p=>p && !photoUrls[p]);
   if(paths.length){ const {data}=await sb.storage.from("photos").createSignedUrls(paths, 86400); (data||[]).forEach(x=>{ if(x.signedUrl) photoUrls[x.path]=x.signedUrl; }); }
@@ -445,13 +473,14 @@ async function loadAll(){
 }
 async function boot(){
   render();
+  try{ const jq=new URLSearchParams(location.search).get("join"); if(jq){ localStorage.setItem("pg.join", jq); history.replaceState(null,"",location.pathname); S.authMsg="הוזמנת להצטרף לחרדונים של משפחה. התחבר כדי להצטרף."; } }catch(e){}
   if(!window.supabase){ S.mode="error"; render(); return; }
   try{ const qs=new URLSearchParams(location.search+"&"+location.hash.replace(/^#/,"")); const ed=qs.get("error_description"); if(ed){ S.authMsg="!"+ed.replace(/\+/g," "); history.replaceState(null,"",location.pathname); } }catch(e){}
   sb=window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true, autoRefreshToken:true, detectSessionInUrl:true}});
   const {data}=await sb.auth.getSession(); user=data.session ? data.session.user : null;
   sb.auth.onAuthStateChange((ev,ses)=>{ const was=user&&user.id; user=ses?ses.user:null;
     if(user && user.id!==was){ S.mode="loading"; render(); setTimeout(loadAll, 0); }
-    if(!user){ S.mode="auth"; S.dragons=[]; S.bulbs=[]; S.logs=[]; render(); } });
+    if(!user){ S.mode="auth"; S.dragons=[]; S.bulbs=[]; S.logs=[]; S.hh=null; S.members=[]; if(live){ sb.removeChannel(live); live=null; } render(); } });
   if(user) setTimeout(loadAll, 0); else { S.mode="auth"; render(); }
   setTimeout(()=>{ if(S.mode==="loading"){ S.mode="error"; render(); } }, 20000);
   document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible" && user && S.mode==="ready" && !$("#layer").innerHTML) loadAll(); });
@@ -575,7 +604,7 @@ function viewToday(){
   return h;
 }
 function rtRow(type, done, t, s, when){
-  return '<button class="rt'+(done?' done':'')+'" data-act="routine" data-type="'+type+'"><span class="ck">'+(done?ico("check"):"")+'</span><span class="t"><b>'+t+'</b><span>'+esc(s)+'</span></span><span class="when">'+(done? new Date(done.ts).toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"}) : when)+'</span></button>';
+  return '<button class="rt'+(done?' done':'')+'" data-act="routine" data-type="'+type+'"><span class="ck">'+(done?ico("check"):"")+'</span><span class="t"><b>'+t+'</b><span>'+esc(s)+'</span></span><span class="when">'+(done? (multi()&&whoName(done.by)?esc(whoName(done.by))+" · ":"")+new Date(done.ts).toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"}) : when)+'</span></button>';
 }
 function dragonCard(d){
   const tr = weightTrend(d.id); const p = dLogs(d.id,"poop").filter(e=>e.d===d.id)[0];
@@ -627,7 +656,7 @@ function logLabel(e){
 function logRow(e){
   const [i,t,s] = logLabel(e); const when = new Date(e.ts);
   const conf = S.confirmDel===e.id;
-  return '<div class="li"><span class="ic">'+ico(i)+'</span><div class="grow"><b>'+esc(t)+'</b><span>'+esc(heDate(e.ts))+" · "+when.toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"})+(s?" · "+esc(s):"")+(e.d==="both"?" · שניהם":"")+'</span></div>'+
+  return '<div class="li"><span class="ic">'+ico(i)+'</span><div class="grow"><b>'+esc(t)+'</b><span>'+esc(heDate(e.ts))+" · "+when.toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"})+(s?" · "+esc(s):"")+(e.d==="both"?" · שניהם":"")+(multi()&&whoName(e.by)?" · "+esc(whoName(e.by)):"")+'</span></div>'+
     '<button class="btn sm ghost'+(conf?' danger':'')+'" data-act="delLog" data-id="'+esc(e.id)+'" aria-label="מחיקה">'+(conf?"למחוק?":ico("trash",'style="width:18px;height:18px"'))+'</button></div>';
 }
 function weightChart(id){
@@ -892,6 +921,7 @@ function settingsSheet(){
     '<h3>נורות</h3>'+(bl||'<div class="small muted">עוד לא נרשמו נורות.</div>')+'<button class="btn" data-act="addBulb">+ נורה</button>'+
     '<h3>תוספים</h3><div class="card" style="display:flex;flex-direction:column;gap:10px"><div class="field"><label>יום מולטי־ויטמין</label>'+optsHTML("multiDay",DAYS.map((d,i)=>[i,d]),p.multiDay)+'</div><div class="field"><label>יום בלי אבקה</label>'+optsHTML("plainDay",DAYS.map((d,i)=>[i,d]).concat([[-1,"אין"]]),p.plainDay)+'</div>'+
     '<button class="btn sm" data-act="d3" aria-pressed="'+!!p.d3+'">'+(p.d3?"סידן עם D3 ✓":"סידן בלי D3")+'</button><div class="note">עם נורת UV תקינה, הרבה מגדלים מוותרים על D3. אחרים נותנים D3 פעם־פעמיים בשבוע. זה נושא שנוי במחלוקת, אפשר לשאול את הווטרינר.</div></div>'+
+    householdHTML()+
     '<h3>חשבון</h3><div class="card row" style="justify-content:space-between"><span class="small muted" dir="ltr">'+esc(user&&user.email||"")+'</span><button class="btn sm danger" data-act="logout">יציאה</button></div>');
 }
 
@@ -911,6 +941,26 @@ function vetSummary(){
   lines.push("תוספים: סידן "+(S.config.supp.d3?"עם":"בלי")+" D3, מולטי־ויטמין ביום "+DAYS[S.config.supp.multiDay]);
   const txt=lines.join("\n");
   openSheet(sheetHead("סיכום לווטרינר")+'<textarea id="vs" rows="14" style="border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--bg);width:100%;font-size:13px" readonly>'+esc(txt)+'</textarea><button class="btn pri" data-act="copyVs">העתקה</button>');
+}
+
+function householdHTML(){
+  const me = S.members.find(m=>m.user_id===user.id); const owner = me && me.role==="owner";
+  const cur = S.hhs.find(h=>h.id===S.hh);
+  let h = '<h3>בני הבית</h3><div class="card" style="display:flex;flex-direction:column;gap:10px"><div class="small muted">'+esc(cur?cur.name:"")+' · כולם רואים ורושמים על אותם חרדונים</div><div class="list">'+
+    S.members.map(m=>'<div class="li"><span class="ic">'+ico("heart")+'</span><div class="grow"><b>'+esc(m.display_name||"משתמש")+(m.user_id===user.id?" (אתה)":"")+'</b><span>'+(m.role==="owner"?"מנהל הבית":"משתתף")+'</span></div>'+
+      ((owner && m.user_id!==user.id) ? '<button class="btn sm ghost danger" data-act="rmMember" data-id="'+esc(m.user_id)+'">'+(S.confirmDel==="m"+m.user_id?"להסיר?":"הסרה")+'</button>' : '')+'</div>').join("")+'</div>'+
+    '<button class="btn pri" data-act="invite">הזמנת בן משפחה</button>';
+  if(me && !(owner && S.members.filter(x=>x.role==="owner").length===1)) h += '<button class="btn sm ghost danger" data-act="leaveHH">'+(S.confirmDel==="leave"?"בטוח? לעזוב את הבית":"עזיבת הבית")+'</button>';
+  if(S.hhs.length>1) h += '<div class="field"><label>מעבר בין בתים</label><div class="opts">'+S.hhs.map(x=>'<button data-act="switchHH" data-id="'+esc(x.id)+'" aria-pressed="'+(x.id===S.hh)+'">'+esc(x.name)+'</button>').join("")+'</div></div>';
+  return h+'</div>';
+}
+async function doInvite(){
+  const r = await sb.rpc("create_invite", {h: S.hh}); if(r.error){ toast("לא הצלחתי ליצור הזמנה"); return; }
+  const url = location.origin+location.pathname+"?join="+r.data; const cur=S.hhs.find(h=>h.id===S.hh);
+  const text = "הצטרפו לפוגונה כדי לנהל איתי את החרדונים"+(S.dragons.length?" ("+S.dragons.map(d=>d.name).join(" ו")+")":"")+". הקישור בתוקף לשבוע:";
+  if(navigator.share){ try{ await navigator.share({title:"פוגונה", text, url}); return; }catch(e){ if(e && e.name==="AbortError") return; } }
+  try{ await navigator.clipboard.writeText(text+" "+url); toast("הקישור הועתק. אפשר להדביק בוואטסאפ"); }
+  catch(e){ openSheet(sheetHead("קישור הזמנה")+'<div class="small">שלח את הקישור הזה לבן המשפחה:</div><input readonly dir="ltr" value="'+esc(url)+'" style="border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--bg);width:100%">'); }
 }
 
 /* ---------------- toast ---------------- */
@@ -949,6 +999,10 @@ document.addEventListener("click", async ev=>{
     case "tOpt": S.tcheck[el.dataset.k]=el.dataset.v; lsSet("pg.tcheck",S.tcheck); render(); break;
     case "login": doLogin(); break;
     case "install": doInstall(); break;
+    case "invite": doInvite(); break;
+    case "rmMember": if(S.confirmDel==="m"+id){ S.confirmDel=null; const {error}=await sb.from("household_members").delete().eq("household_id",S.hh).eq("user_id",id); if(error) toast("ההסרה נכשלה"); else { await loadAll(true); toast("הוסר מהבית"); } settingsSheet(); } else { S.confirmDel="m"+id; settingsSheet(); } break;
+    case "leaveHH": if(S.confirmDel==="leave"){ S.confirmDel=null; const {error}=await sb.from("household_members").delete().eq("household_id",S.hh).eq("user_id",user.id); if(error){ toast("לא הצלחתי לעזוב"); break; } closeSheet(); S.hh=null; lsSet("pg.hh",null); S.mode="loading"; render(); loadAll(); } else { S.confirmDel="leave"; settingsSheet(); } break;
+    case "switchHH": closeSheet(); S.hh=id; lsSet("pg.hh",id); subscribeLive(); S.mode="loading"; render(); loadAll(); break;
     case "google": { S.authBusy=true; S.authMsg=""; render(); const {error}=await sb.auth.signInWithOAuth({provider:"google", options:{redirectTo: location.origin+location.pathname}}); if(error){ S.authBusy=false; S.authMsg="!הכניסה עם Google לא הצליחה: "+error.message; render(); } break; }
     case "logout": closeSheet(); await sb.auth.signOut(); break;
     case "vetSummary": vetSummary(); break;
@@ -982,7 +1036,7 @@ document.addEventListener("change", async ev=>{
   if(f.size > 10*1024*1024){ toast("התמונה גדולה מדי (עד 10MB)"); return; }
   toast("מעלה תמונה…");
   const ext = (f.name.split(".").pop()||"jpg").toLowerCase().replace(/[^a-z0-9]/g,"") || "jpg";
-  const path = user.id+"/"+pid+"-"+Date.now()+"."+ext;
+  const path = S.hh+"/"+pid+"-"+Date.now()+"."+ext;
   const up = await sb.storage.from("photos").upload(path, f, {contentType:f.type||"image/jpeg", upsert:true});
   if(up.error){ toast("ההעלאה נכשלה"); return; }
   const su = await sb.storage.from("photos").createSignedUrl(path, 86400); if(su.data) photoUrls[path]=su.data.signedUrl;
@@ -1020,7 +1074,7 @@ async function doRestore(){
   for(const d of (j.dragons||[])){ const same=S.dragons.find(x=>x.name===d.name); if(same){ map[d.id]=same.id; continue; } const nd=await saveDragon(Object.assign({}, d, {id:"new", photo:null})); if(nd) map[d.id]=nd.id; }
   for(const b of (j.bulbs||[])){ await saveBulb(Object.assign({}, b, {id:"new", dragon: map[b.dragon]||""})); }
   let logs = j.logs || []; if(j.months){ for(const mk in j.months) logs = logs.concat(j.months[mk].entries||[]); }
-  const rows = logs.filter(e=>e.d==="both"||map[e.d]).map(e=>({dragon_id: e.d==="both"?null:map[e.d], type:e.type, v:e.v||{}, ts:e.ts}));
+  const rows = logs.filter(e=>e.d==="both"||map[e.d]).map(e=>({household_id:S.hh, dragon_id: e.d==="both"?null:map[e.d], type:e.type, v:e.v||{}, ts:e.ts}));
   for(let i=0;i<rows.length;i+=500){ const {error}=await sb.from("logs").insert(rows.slice(i,i+500)); if(error){ fail(error); break; } }
   if(j.config && j.config.supp){ S.config.supp=Object.assign(S.config.supp, j.config.supp); if(j.config.salad) S.config.salad=j.config.salad; await saveConfig(); }
   await loadAll(); toast("השחזור הסתיים");
