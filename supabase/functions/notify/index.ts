@@ -44,7 +44,7 @@ async function remindersFor(hh: string, now: Date): Promise<Msg[] | null> {
     sb.from("dragons").select("id,name").eq("household_id", hh),
     sb.from("logs").select("type,ts").eq("household_id", hh).in("type", ["salad", "insect"]).gte("ts", recent),
     sb.from("logs").select("dragon_id,ts").eq("household_id", hh).eq("type", "weight").gte("ts", wSince).order("ts", { ascending: false }),
-    sb.from("household_settings").select("salad_prepared").eq("household_id", hh).maybeSingle(),
+    sb.from("household_settings").select("salad_prepared,location").eq("household_id", hh).maybeSingle(),
     sb.from("bulbs").select("id,label,installed").eq("household_id", hh),
   ]);
   if (dr.error || lo.error || wt.error || st.error || bu.error) { console.error("query failed", hh, dr.error || lo.error || wt.error || st.error || bu.error); return null; }
@@ -66,7 +66,29 @@ async function remindersFor(hh: string, now: Date): Promise<Msg[] | null> {
       if (months >= 12) out.push({ kind: "bulb:" + b.id, pref: "care", day: weekStart(L.day), title: "לבדוק החלפת נורה", body: `${b.label || "הנורה"} מותקנת ${Math.floor(months)} חודשים. ה־UVB נחלש גם כשהיא מאירה.` });
     }
   }
+  const loc = (st.data?.location || {}) as { lat?: number; lon?: number; name?: string };
+  if (loc.lat && (between(L.hour, 18, 21) || between(L.hour, 8, 11))) {
+    const w = await forecast(loc.lat, loc.lon!, L);
+    if (w && between(L.hour, 18, 21) && w.nightMin <= 12) out.push({ kind: "cold", pref: "weather", title: `לילה קר: ${w.nightMin}° ב${loc.name || "חוץ"}`, body: "לוודא שהגוף הקרמי דולק ושהטרמוסטט מכוון ל־20–22°." });
+    if (w && between(L.hour, 8, 11) && w.dayMax >= 35) out.push({ kind: "heat", pref: "weather", title: `יום חם: ${w.dayMax}° ב${loc.name || "חוץ"}`, body: "לבדוק שהצד הקר נשאר עד 29°, להרחיק משמש ישירה, ושיש מים." });
+  }
   return out;
+}
+
+const wxCache = new Map<string, { nightMin: number; dayMax: number } | null>();
+async function forecast(lat: number, lon: number, L: { day: string }) {
+  const k = `${lat},${lon}`; if (wxCache.has(k)) return wxCache.get(k)!;
+  try {
+    const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m&forecast_days=2&timezone=Asia%2FJerusalem`);
+    if (!r.ok) throw new Error("http " + r.status);
+    const j = await r.json(); const t: string[] = j.hourly.time, v: number[] = j.hourly.temperature_2m;
+    const tmw = new Date(Date.parse(L.day) + 864e5).toISOString().slice(0, 10);
+    const hr = (x: string) => Number(x.slice(11, 13));
+    const night = t.map((x, i) => i).filter(i => (t[i].startsWith(L.day) && hr(t[i]) >= 20) || (t[i].startsWith(tmw) && hr(t[i]) <= 8));
+    const day = t.map((x, i) => i).filter(i => t[i].startsWith(L.day) && hr(t[i]) >= 9 && hr(t[i]) <= 18);
+    const w = { nightMin: Math.round(Math.min(...night.map(i => v[i]))), dayMax: Math.round(Math.max(...day.map(i => v[i]))) };
+    wxCache.set(k, w); return w;
+  } catch (e) { console.error("forecast", e); wxCache.set(k, null); return null; }
 }
 
 async function allSubs(): Promise<Sub[]> {

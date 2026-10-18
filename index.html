@@ -449,7 +449,7 @@ async function addLog(entry){
   Object.assign(tmp, fromLog(data)); render();
 }
 async function removeLog(id){ const prev=S.logs; S.logs=S.logs.filter(e=>e.id!==id); render(); const {error}=await sb.from("logs").delete().eq("id",id); if(error){ S.logs=prev; render(); fail(error);} }
-async function saveConfig(){ render(); const {error}=await sb.from("household_settings").upsert({household_id:S.hh, supp:S.config.supp, salad_prepared:S.config.salad.prepared||null, shop:S.config.shop||{}, vet:S.config.vet||{}, updated_at:new Date().toISOString()}); if(error) fail(error); }
+async function saveConfig(){ render(); const {error}=await sb.from("household_settings").upsert({household_id:S.hh, supp:S.config.supp, salad_prepared:S.config.salad.prepared||null, shop:S.config.shop||{}, vet:S.config.vet||{}, location:S.config.location||{}, updated_at:new Date().toISOString()}); if(error) fail(error); }
 async function saveDragon(d){
   const row={household_id:S.hh, name:d.name, sex:d.sex||"", hatch:d.hatch||null, watch:!!d.watch, photo_path:d.photo||null, sort:d.order||0};
   if(isNew(d.id)){ const {data,error}=await sb.from("dragons").insert(row).select().single(); if(error){ fail(error); return null; } const nd=fromDragon(data); S.dragons.push(nd); render(); return nd; }
@@ -498,7 +498,7 @@ async function loadAll(quiet){
   ]);
   if(dr.error||bu.error||lo.error){ if(!quiet){ S.mode="error"; render(); } return; }
   S.dragons=dr.data.map(fromDragon); S.bulbs=bu.data.map(fromBulb); S.logs=lo.data.map(fromLog); S.members=me.data||[];
-  if(se.data) S.config={supp:Object.assign({plainDay:-1,d3:false}, se.data.supp||{}), salad:{prepared:se.data.salad_prepared||null}, shop:se.data.shop||{}, vet:se.data.vet||{}};
+  if(se.data) S.config={supp:Object.assign({plainDay:-1,d3:false}, se.data.supp||{}), salad:{prepared:se.data.salad_prepared||null}, shop:se.data.shop||{}, vet:se.data.vet||{}, location:se.data.location||{}};
   const paths=S.dragons.map(d=>d.photo).filter(p=>p && !photoUrls[p]);
   if(paths.length){ const {data}=await sb.storage.from("photos").createSignedUrls(paths, 86400); (data||[]).forEach(x=>{ if(x.signedUrl) photoUrls[x.path]=x.signedUrl; }); }
   S.mode="ready"; render();
@@ -627,6 +627,7 @@ function viewToday(){
   }
   const al = computeAlerts().slice(0,5);
   if(al.length) h += '<section class="sec"><div class="sec-h"><h2>מה דורש תשומת לב</h2></div><div class="alerts">'+al.map(a=>'<div class="alert '+a[0]+'"><div class="grow"><b>'+esc(a[1])+'</b><span>'+esc(a[2])+'</span></div>'+(a[0]==="vet"?'<button class="btn sm" data-act="vets" style="color:var(--vet);flex:none">ווטרינר</button>':'')+'</div>').join("")+'</div><p class="note">הספים בהתראות הם הערכה זהירה של האפליקציה, לא כלל וטרינרי. העיקרון מ־'+srcLink("rfHealth","ReptiFiles")+': לשקול כל שבוע, וירידה פתאומית במשקל היא לרוב סימן למחלה.</p></section>';
+  h += weatherHTML();
   h += '<section class="sec"><div class="sec-h"><h2>החרדונים</h2><span class="hint">לחץ לרישום מהיר</span></div><div class="dgrid">'+S.dragons.map(dragonCard).join("")+'</div></section>';
   const salad = doneToday("salad"), mist = doneToday("mist"), ins = doneToday("insect");
   h += '<section class="sec"><div class="sec-h"><h2>השגרה של היום</h2></div>'+
@@ -984,6 +985,7 @@ function settingsSheet(){
     '<h3>תוספים</h3><div class="card" style="display:flex;flex-direction:column;gap:10px"><div class="field"><label>ימי מולטי־ויטמין (על הסלט, בנוסף לסידן)</label><div class="opts">'+DAYS.map((d,i)=>'<button data-act="multiDayT" data-v="'+i+'" aria-pressed="'+multiDays().includes(i)+'">'+d+'</button>').join("")+'</div><div class="note">לפי ReptiFiles: פעמיים בשבוע עד גיל שנה ולנקבה מעוברת, פעם בשבוע לבוגר.</div></div><div class="field"><label>יום דילוג (לא חובה)</label>'+optsHTML("plainDay",DAYS.map((d,i)=>[i,d]).concat([[-1,"אין"]]),p.plainDay)+'</div>'+
     '<button class="btn sm" data-act="d3" aria-pressed="'+!!p.d3+'">'+(p.d3?"סידן עם D3 ✓":"סידן בלי D3")+'</button><div class="note">ההנחה: יש נורת UVB תקינה. במצב כזה הרבה מגדלים מוותרים על D3. אחרים נותנים D3 פעם־פעמיים בשבוע. זה נושא שנוי במחלוקת, אפשר לשאול את הווטרינר.</div></div>'+
     householdHTML()+pushHTML()+
+    '<h3>מיקום למזג אוויר</h3><div class="card row" style="justify-content:space-between"><span class="small">'+esc((S.config.location||{}).name||"לא נבחר")+'</span><button class="btn sm" data-act="wxSetup">'+((S.config.location||{}).lat?"שינוי":"בחירת עיר")+'</button></div>'+
     '<h3>חשבון</h3><div class="card row" style="justify-content:space-between"><span class="small muted" dir="ltr">'+esc(user&&user.email||"")+'</span><button class="btn sm danger" data-act="logout">יציאה</button></div>');
 }
 
@@ -1082,6 +1084,54 @@ function pushHTML(){
   return h+'</div>';
 }
 
+/* ---------------- weather (Open-Meteo, no key) ---------------- */
+let WX = {state:"idle", data:null, err:null, key:null};
+function wxAdvice(w){
+  const A=[]; if(!w) return A;
+  if(w.nightMin<=10) A.push(["act","לילה קר מאוד: "+w.nightMin+"° בחוץ","לוודא שהגוף הקרמי דולק ושהטרמוסטט מכוון ל־20–22°. בלי נורה אדומה."]);
+  else if(w.nightMin<=15) A.push(["watch","לילה קר: "+w.nightMin+"° בחוץ","אם החדר לא מחומם, לבדוק שהלילה בטרריום לא יורד מתחת ל־18° אצל צעירים."]);
+  if(w.dayMax>=40) A.push(["act","שרב כבד: "+w.dayMax+"° בחוץ","לבדוק שהצד הקר לא עולה מעל 29°, להרחיק מחלון ושמש ישירה, ולוודא שיש מים. אם חם מדי, לכבות את נורת החום לכמה שעות."]);
+  else if(w.dayMax>=35) A.push(["watch","יום חם: "+w.dayMax+"° בחוץ","לבדוק שהצד הקר נשאר עד 29°, ושהטרריום לא בשמש ישירה."]);
+  return A;
+}
+async function loadWeather(force){
+  const L=S.config.location||{}; if(!L.lat) { WX={state:"none"}; return; }
+  const key=L.lat+","+L.lon+","+new Date().toISOString().slice(0,13);
+  if(!force && WX.key===key && WX.state==="done") return;
+  try{ const c=JSON.parse(sessionStorage.getItem("pg.wx")||"null"); if(!force && c && c.key===key){ WX=c; render(); return; } }catch(e){}
+  WX={state:"busy", key};
+  try{
+    const r=await fetch("https://api.open-meteo.com/v1/forecast?latitude="+L.lat+"&longitude="+L.lon+"&hourly=temperature_2m&forecast_days=2&timezone=Asia%2FJerusalem");
+    if(!r.ok) throw new Error("http "+r.status);
+    const j=await r.json(); const t=j.hourly.time, v=j.hourly.temperature_2m;
+    const now=new Date(); const pad2=n=>String(n).padStart(2,"0"); const today=now.getFullYear()+"-"+pad2(now.getMonth()+1)+"-"+pad2(now.getDate());
+    const tmw=(()=>{ const d=new Date(now); d.setDate(d.getDate()+1); return d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate()); })();
+    const nightIdx=t.map((x,i)=>i).filter(i=> (t[i].startsWith(today) && +t[i].slice(11,13)>=20) || (t[i].startsWith(tmw) && +t[i].slice(11,13)<=8));
+    const dayIdx=t.map((x,i)=>i).filter(i=> t[i].startsWith(+now.getHours()>=18?tmw:today) && +t[i].slice(11,13)>=9 && +t[i].slice(11,13)<=18);
+    const nightMin=Math.round(Math.min(...nightIdx.map(i=>v[i]))), dayMax=Math.round(Math.max(...dayIdx.map(i=>v[i])));
+    WX={state:"done", key, data:{nightMin, dayMax, dayLabel: +now.getHours()>=18?"מחר":"היום", place:L.name}};
+    try{ sessionStorage.setItem("pg.wx", JSON.stringify(WX)); }catch(e){}
+  }catch(e){ WX={state:"err", key, err:"לא הצלחתי לטעון מזג אוויר"}; }
+  render();
+}
+function weatherHTML(){
+  const L=S.config.location||{};
+  if(!L.lat) return '<section class="sec"><div class="card row" style="gap:12px"><span class="ic" style="width:34px;height:34px;display:grid;place-items:center">'+ico("sun",'style="width:26px;height:26px;stroke:var(--accent)"')+'</span><div class="grow small">התראות על לילה קר ושרב לפי העיר שלך.</div><button class="btn sm" data-act="wxSetup">בחירת עיר</button></div></section>';
+  if(WX.state!=="done"){ if(WX.state!=="busy" && WX.state!=="err") setTimeout(()=>loadWeather(),0); return WX.state==="err" ? '<section class="sec"><div class="card small muted">'+esc(WX.err)+'</div></section>' : ''; }
+  const w=WX.data, A=wxAdvice(w);
+  return '<section class="sec"><div class="sec-h"><h2>מזג אוויר · '+esc(w.place||"")+'</h2><span class="hint">'+srcLink("rfTemp","טווחים: ReptiFiles")+'</span></div>'+
+    '<div class="card row" style="justify-content:space-around;text-align:center"><div><div class="big num">'+w.nightMin+'°</div><div class="small muted">מינימום הלילה</div></div><div><div class="big num">'+w.dayMax+'°</div><div class="small muted">מקסימום '+w.dayLabel+'</div></div></div>'+
+    (A.length?'<div class="alerts">'+A.map(a=>'<div class="alert '+a[0]+'"><div><b>'+esc(a[1])+'</b><span>'+esc(a[2])+'</span></div></div>').join("")+'</div>':'<div class="small muted">אין צפי לקור או לחום חריגים. אלה טמפרטורות בחוץ, בבית זה בדרך כלל מתון יותר.</div>')+
+    '<p class="note">נתונים: <a class="src" href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo ↗</a></p></section>';
+}
+async function wxSearch(q){
+  const box=$("#wxResults"); if(!box) return; if(!q || q.length<2){ box.innerHTML=""; return; }
+  try{ const r=await fetch("https://geocoding-api.open-meteo.com/v1/search?name="+encodeURIComponent(q)+"&count=6&language=he&format=json"); const j=await r.json();
+    box.innerHTML=(j.results||[]).map(x=>'<button class="chk" data-act="wxPick" data-lat="'+x.latitude+'" data-lon="'+x.longitude+'" data-name="'+esc(x.name)+'"><span class="grow">'+esc(x.name)+' <span class="muted small">'+esc([x.admin1,x.country].filter(Boolean).join(", "))+'</span></span></button>').join("") || '<div class="small muted">לא נמצא</div>';
+  }catch(e){ box.innerHTML='<div class="small muted">החיפוש נכשל</div>'; }
+}
+function wxSetupSheet(){ openSheet(sheetHead("העיר שלכם")+'<div class="field"><label for="wxQ">חיפוש עיר</label><input id="wxQ" placeholder="למשל: אשקלון" autocomplete="off"></div><div id="wxResults"></div><p class="note">משמש רק לתחזית ולהתראות מזג אוויר. נשמר לכל בני הבית.</p>'); }
+
 /* ---------------- toast ---------------- */
 let tt; function toast(m){ let el=$(".toast"); if(!el){ el=document.createElement("div"); el.className="toast"; el.setAttribute("role","status"); document.body.appendChild(el);} el.textContent=m; clearTimeout(tt); tt=setTimeout(()=>el.remove(),2200); }
 
@@ -1120,6 +1170,8 @@ document.addEventListener("click", async ev=>{
     case "install": doInstall(); break;
     case "invite": doInvite(); break;
     case "vets": vetsSheet(); break;
+    case "wxSetup": wxSetupSheet(); break;
+    case "wxPick": { S.config.location={name:el.dataset.name, lat:Math.round(+el.dataset.lat*1e4)/1e4, lon:Math.round(+el.dataset.lon*1e4)/1e4}; closeSheet(); WX={state:"idle"}; try{ sessionStorage.removeItem("pg.wx"); }catch(e){} await saveConfig(); toast("נשמר: "+el.dataset.name); break; }
     case "pushOn": enablePush(); break;
     case "pushOff": disablePush(); break;
     case "pushTest": testPush(); break;
@@ -1149,6 +1201,7 @@ document.addEventListener("click", ev=>{ if(ev.target.classList && ev.target.cla
 document.addEventListener("keydown", ev=>{ if(ev.key==="Escape" && $("#layer").innerHTML) closeSheet(); });
 document.addEventListener("input", ev=>{
   const k=ev.target.dataset && ev.target.dataset.calc; if(k){ S.calc[k]=ev.target.value; lsSet("pg.calc",S.calc); refreshCalc(); return; }
+  if(ev.target.id==="wxQ"){ clearTimeout(window._wxT); const q=ev.target.value.trim(); window._wxT=setTimeout(()=>wxSearch(q),300); return; }
   const t=ev.target.dataset && ev.target.dataset.t; if(t){ S.tcheck[t]=ev.target.value; lsSet("pg.tcheck",S.tcheck); refreshTemp(); }
 });
 function refreshCalc(){ // keep focus: re-render only result parts
