@@ -82,6 +82,8 @@ h3{font-size:15px;margin:0}
 .btn{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:10px 14px;min-height:44px;font-weight:500}
 .btn.pri{background:var(--accent);border-color:var(--accent);color:#1D1606;font-weight:700}
 .btn.ghost{background:transparent}
+a.btn{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;color:inherit}
+a.btn.pri{color:#1D1606}
 .btn.sm{min-height:36px;padding:6px 10px;font-size:13px}
 .btn.danger{color:var(--vet)}
 .seg{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
@@ -134,7 +136,7 @@ h3{font-size:15px;margin:0}
 .li .ic{width:34px;height:34px;border-radius:10px;background:var(--surface2);display:grid;place-items:center;flex:none}
 .li .ic svg{width:20px;height:20px;stroke:var(--basalt)}
 .li .grow b{font-size:14px;display:block}
-.li .grow span{font-size:12px;color:var(--muted)}
+.li .grow span{font-size:12px;color:var(--muted);display:block}
 /* behavior */
 .bgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .bcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:8px 8px 10px;display:flex;flex-direction:column;gap:4px;text-align:start}
@@ -367,6 +369,16 @@ const SOURCES = {
   arav:{org:"ARAV", t:"חיפוש ווטרינר לזוחלים", u:"https://arav.org/find-a-vet/", d:"איגוד הווטרינרים לזוחלים ודו־חיים. המאגר מתמקד בעיקר בארה״ב, אבל כולל גם חברים ממדינות אחרות."}
 };
 const srcLink = (k, label) => { const x=SOURCES[k]; return x ? '<a class="src" href="'+esc(x.u)+'" target="_blank" rel="noopener">'+esc(label||("מקור: "+x.org))+' ↗</a>' : ""; };
+const VETS = [
+  {n:"מרכז וטרינרי אנימל סנטר", area:"south", city:"אשדוד", addr:"גיא אוני 6", tel:"077-7299925", urgent:"053-6808788 (דחוף, עד חצות)", web:"https://www.animalcenter.co.il/articles/what-animals-does-an-exotic-animal-veterinarian-treat-in-ashdod", note:"באתר יש פרק על זוחלים ולטאות: מחלת עצמות, טפילים ובעיות הטלה."},
+  {n:"מרפאה וטרינרית ברנע", area:"south", city:"באר שבע", addr:"משעול גירית 2, פינת הגמל", tel:"08-6421848", urgent:"", web:"https://www.barnea4pets.co.il/site/services/163a5a62-040b-4211-9509-3610541fdf4d", note:"באתר כתוב שמגיעים אליהם זוחלים. יש גם סניף בעומר, בתיאום מראש."},
+  {n:"מרפאת כל חי", area:"center", city:"רחובות", addr:"בנימין 37", tel:"08-9358535", urgent:"052-3218614 (חירום)", web:"https://www.kolhai.co.il/medical-care-for-exotic-animals", note:"באתר כתוב שיש ניסיון בטיפול בזוחלים שונים."},
+  {n:"אהבת החי", area:"center", city:"תל אביב", addr:"יד המעביר 9, הדר יוסף", tel:"03-6472933", urgent:"077-9579799 (אחרי 19:00)", web:"https://www.ofervet.co.il/", note:"באתר כתוב שד״ר אסתי זיו מטפלת בזוחלים."},
+  {n:"מרכז וטרינרי פסגות", area:"center", city:"ראש העין", addr:"הרב שלום שבזי 172", tel:"074-7094082", urgent:"054-8939193 (חירום, עד 20:00)", web:"https://www.vetpsagotclinic.co.il/%D7%97%D7%99%D7%95%D7%AA-%D7%90%D7%A7%D7%96%D7%95%D7%98%D7%99%D7%95%D7%AA", note:"באתר כתוב במפורש שמטפלים בזוחלים ונחשים."},
+  {n:"ד״ר ג׳רסי לזר", area:"center", city:"רחובות", addr:"מגיני הגליל 47 / אברמסון 5", tel:"077-2316723", urgent:"", weak:true, web:"https://www.gerassivet.co.il/%D7%95%D7%98%D7%A8%D7%99%D7%A0%D7%A8-%D7%97%D7%99%D7%95%D7%AA-%D7%90%D7%A7%D7%96%D7%95%D7%98%D7%99%D7%95%D7%AA/", note:"באתר מופיעים צבים ואיגואנות בין החיות האקזוטיות, אבל לא כתוב זוחלים במפורש. כדאי להתקשר ולשאול על חרדונים."}
+];
+const AREAS = [["south","שפלה ודרום"],["center","מרכז"],["jerusalem","ירושלים"],["north","צפון"]];
+const telHref = t => "tel:"+String(t).replace(/[^0-9+]/g,"");
 const GREENS = {
   base:{t:"בסיס יומי", c:"ok", note:"2–3 מתחלפים בכל יום", items:["עלי קייל","דלורית מגוררת","דלעת","עלי קולרבי","אנדיב / עולש","כרוב סיני","כוסברה","זוקיני / קישוא","חסה רומית (מילוי)"]},
   some:{t:"לפעמים", c:"watch", note:"פעם־פעמיים בשבוע", items:["תרד, מנגולד, עלי סלק (מעט, בגלל אוקסלטים)","פטרוזיליה","נבטי חמניה","ברוקולי","בטטה מגוררת","פלפל אדום / צהוב / כתום","גזר","שומר","כרוב לבן / אדום","ארוגולה","חובזה (בר, לא מרוסס)","כפות צבר בלי קוצים"]},
@@ -436,7 +448,7 @@ async function addLog(entry){
   Object.assign(tmp, fromLog(data)); render();
 }
 async function removeLog(id){ const prev=S.logs; S.logs=S.logs.filter(e=>e.id!==id); render(); const {error}=await sb.from("logs").delete().eq("id",id); if(error){ S.logs=prev; render(); fail(error);} }
-async function saveConfig(){ render(); const {error}=await sb.from("household_settings").upsert({household_id:S.hh, supp:S.config.supp, salad_prepared:S.config.salad.prepared||null, shop:S.config.shop||{}, updated_at:new Date().toISOString()}); if(error) fail(error); }
+async function saveConfig(){ render(); const {error}=await sb.from("household_settings").upsert({household_id:S.hh, supp:S.config.supp, salad_prepared:S.config.salad.prepared||null, shop:S.config.shop||{}, vet:S.config.vet||{}, updated_at:new Date().toISOString()}); if(error) fail(error); }
 async function saveDragon(d){
   const row={household_id:S.hh, name:d.name, sex:d.sex||"", hatch:d.hatch||null, watch:!!d.watch, photo_path:d.photo||null, sort:d.order||0};
   if(isNew(d.id)){ const {data,error}=await sb.from("dragons").insert(row).select().single(); if(error){ fail(error); return null; } const nd=fromDragon(data); S.dragons.push(nd); render(); return nd; }
@@ -485,7 +497,7 @@ async function loadAll(quiet){
   ]);
   if(dr.error||bu.error||lo.error){ if(!quiet){ S.mode="error"; render(); } return; }
   S.dragons=dr.data.map(fromDragon); S.bulbs=bu.data.map(fromBulb); S.logs=lo.data.map(fromLog); S.members=me.data||[];
-  if(se.data) S.config={supp:Object.assign({plainDay:-1,d3:false}, se.data.supp||{}), salad:{prepared:se.data.salad_prepared||null}, shop:se.data.shop||{}};
+  if(se.data) S.config={supp:Object.assign({plainDay:-1,d3:false}, se.data.supp||{}), salad:{prepared:se.data.salad_prepared||null}, shop:se.data.shop||{}, vet:se.data.vet||{}};
   const paths=S.dragons.map(d=>d.photo).filter(p=>p && !photoUrls[p]);
   if(paths.length){ const {data}=await sb.storage.from("photos").createSignedUrls(paths, 86400); (data||[]).forEach(x=>{ if(x.signedUrl) photoUrls[x.path]=x.signedUrl; }); }
   S.mode="ready"; render();
@@ -612,7 +624,7 @@ function viewToday(){
     return h;
   }
   const al = computeAlerts().slice(0,5);
-  if(al.length) h += '<section class="sec"><div class="sec-h"><h2>מה דורש תשומת לב</h2></div><div class="alerts">'+al.map(a=>'<div class="alert '+a[0]+'"><div><b>'+esc(a[1])+'</b><span>'+esc(a[2])+'</span></div></div>').join("")+'</div><p class="note">הספים בהתראות הם הערכה זהירה של האפליקציה, לא כלל וטרינרי. העיקרון מ־'+srcLink("rfHealth","ReptiFiles")+': לשקול כל שבוע, וירידה פתאומית במשקל היא לרוב סימן למחלה.</p></section>';
+  if(al.length) h += '<section class="sec"><div class="sec-h"><h2>מה דורש תשומת לב</h2></div><div class="alerts">'+al.map(a=>'<div class="alert '+a[0]+'"><div class="grow"><b>'+esc(a[1])+'</b><span>'+esc(a[2])+'</span></div>'+(a[0]==="vet"?'<button class="btn sm" data-act="vets" style="color:var(--vet);flex:none">ווטרינר</button>':'')+'</div>').join("")+'</div><p class="note">הספים בהתראות הם הערכה זהירה של האפליקציה, לא כלל וטרינרי. העיקרון מ־'+srcLink("rfHealth","ReptiFiles")+': לשקול כל שבוע, וירידה פתאומית במשקל היא לרוב סימן למחלה.</p></section>';
   h += '<section class="sec"><div class="sec-h"><h2>החרדונים</h2><span class="hint">לחץ לרישום מהיר</span></div><div class="dgrid">'+S.dragons.map(dragonCard).join("")+'</div></section>';
   const salad = doneToday("salad"), mist = doneToday("mist"), ins = doneToday("insect");
   h += '<section class="sec"><div class="sec-h"><h2>השגרה של היום</h2></div>'+
@@ -698,7 +710,7 @@ function weightChart(id){
 }
 
 function viewBeh(){
-  let h = '<section class="sec"><div class="card row" style="gap:14px"><div class="grow"><h2>משהו מדאיג?</h2><div class="small muted">שלוש שאלות, ואז תשובה: לעקוב, לתקן סביבה, או ווטרינר.</div></div><button class="btn pri" data-act="triage">בדיקה מהירה</button></div></section>';
+  let h = '<section class="sec"><div class="card row" style="gap:14px"><div class="grow"><h2>משהו מדאיג?</h2><div class="small muted">שלוש שאלות, ואז תשובה: לעקוב, לתקן סביבה, או ווטרינר.</div></div><button class="btn pri" data-act="triage">בדיקה מהירה</button></div><button class="btn" data-act="vets">ווטרינרים לזוחלים</button></section>';
   const F=[["all","הכול"],["ok","תקין"],["watch","לעקוב"],["act","לפעול"],["vet","ווטרינר"]];
   h += '<div class="seg" role="group" aria-label="סינון">'+F.map(([k,t])=>'<button data-act="behFilter" data-k="'+k+'" aria-pressed="'+(S.behFilter===k)+'">'+t+'</button>').join("")+'</div>';
   const list = BEHAVIORS.filter(b=>S.behFilter==="all"||b.st===S.behFilter);
@@ -727,13 +739,14 @@ function viewFood(){
 }
 
 function viewSetup(){
-  const segs=[["calc","מחשבון"],["temp","בדיקת טמפ׳"],["buy","לפני שקונים"],["lamps","נורות"],["src","מקורות"]];
+  const segs=[["calc","מחשבון"],["temp","בדיקת טמפ׳"],["buy","לפני שקונים"],["lamps","נורות"],["vets","ווטרינרים"],["src","מקורות"]];
   let h = '<div class="seg" role="group" aria-label="הקמה" style="flex-wrap:wrap">'+segs.map(([k,t])=>'<button data-act="setupSeg" data-k="'+k+'" aria-pressed="'+(S.setupSeg===k)+'">'+t+'</button>').join("")+'</div>';
   if(S.setupSeg==="calc") h += viewCalc();
   if(S.setupSeg==="temp") h += viewTemp();
   if(S.setupSeg==="buy") h += viewBuy();
   if(S.setupSeg==="lamps") h += viewLamps();
   if(S.setupSeg==="src") h += viewSources();
+  if(S.setupSeg==="vets") h += vetsHTML();
   if(S.setupSeg==="scan") h += viewScan();
   return h;
 }
@@ -858,6 +871,23 @@ function tempAdvice(){
   }
   return A;
 }
+function vetsHTML(){
+  const ov = S.config.vet || {};
+  let h = '<div class="card" style="display:flex;flex-direction:column;gap:10px"><h3>הווטרינר שלנו</h3>'+
+    (ov.phone ? '<div class="row" style="justify-content:space-between"><div class="grow"><b>'+esc(ov.name||"ווטרינר")+'</b><div class="small muted">'+esc(ov.note||"")+'</div></div><a class="btn pri" href="'+esc(telHref(ov.phone))+'">חיוג '+esc(ov.phone)+'</a></div>' : '<div class="small muted">עוד לא נשמר. אחרי ביקור ראשון, כדאי לשמור כאן את הווטרינר שלכם, כדי שכל בני הבית יוכלו לחייג בלחיצה.</div>')+
+    '<div class="fgrid2"><div class="field"><label for="vName">שם</label><input id="vName" value="'+esc(ov.name||"")+'"></div><div class="field"><label for="vPhone">טלפון</label><input id="vPhone" type="tel" dir="ltr" value="'+esc(ov.phone||"")+'"></div></div>'+
+    '<div class="field"><label for="vNote">הערה</label><input id="vNote" value="'+esc(ov.note||"")+'" placeholder="למשל: שעות, כתובת, מי הרופא"></div><button class="btn sm" data-act="saveVet">שמירה</button></div>';
+  h += '<div class="callout watch">המרפאות כאן נאספו מאתרי המרפאות עצמן באוקטובר 2026. לפני שמגיעים, להתקשר ולוודא שמטפלים בחרדונים ושיש רופא לזוחלים במשמרת.</div>';
+  AREAS.forEach(([k,t])=>{
+    const list = VETS.filter(v=>v.area===k);
+    h += '<section class="sec"><div class="sec-h"><h2>'+t+'</h2></div>';
+    if(!list.length) h += '<div class="card small muted">עוד לא מצאנו כאן מרפאה שכותבת במפורש שהיא מטפלת בזוחלים. אפשר לחפש ב<a class="src" href="https://www.d.co.il/h-c14670-e0-p0-l0-t40037117.na1/" target="_blank" rel="noopener">דפי זהב: רפואת חיות אקזוטיות ↗</a> או ב־'+srcLink("arav","ARAV")+'.</div>';
+    else h += '<div class="card list">'+list.map(v=>'<div class="li" style="align-items:flex-start"><div class="grow"><b>'+esc(v.n)+(v.weak?' <span class="chip watch" style="display:inline-flex">לוודא בטלפון</span>':'')+'</b><span>'+esc(v.city)+(v.addr?", "+esc(v.addr):"")+'</span><span>'+esc(v.note)+'</span><span><a class="src" href="'+esc(v.web)+'" target="_blank" rel="noopener">אתר המרפאה ↗</a></span></div><div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end"><a class="btn sm pri" href="'+esc(telHref(v.tel))+'" dir="ltr">'+esc(v.tel)+'</a>'+(v.urgent?'<span class="small muted" style="text-align:end"><a class="src" dir="ltr" href="'+esc(telHref(v.urgent))+'">'+esc(v.urgent.split(" ")[0])+'</a> '+esc(v.urgent.split(" ").slice(1).join(" "))+'</span>':'')+'</div></div>').join("")+'</div>';
+    h += '</section>';
+  });
+  return h;
+}
+function vetsSheet(){ openSheet(sheetHead("ווטרינרים לזוחלים")+vetsHTML()); setTimeout(()=>{ if(document.activeElement && document.activeElement.blur) document.activeElement.blur(); }, 60); }
 function viewSources(){
   const groups=[["טיפול ומגורים",["rf","rfTemp","rfFood","rfSize","rfSub"]],["בריאות (מקורות וטרינריים)",["vca","rvc","tufts","rfHealth"]],["נורות UV",["uvg"]],["מציאת ווטרינר",["arav"]]];
   let h='<section class="sec"><div class="card small">המידע באפליקציה מבוסס על המקורות האלה. כשיש מחלוקת בין מקורות, אנחנו כותבים את זה. אנחנו לא תחליף לווטרינר.</div></section>';
@@ -934,7 +964,7 @@ function triage(step=0){
   if(step<3){ openSheet(sheetHead("בדיקה מהירה · "+(step+1)+"/3")+'<h3>'+Q[step][0]+'</h3><div class="small muted">'+Q[step][1]+'</div><div class="row"><button class="btn pri grow" data-act="triage" data-step="r'+step+'">כן</button><button class="btn grow" data-act="triage" data-step="'+(step+1)+'">לא</button></div>'); }
   else showTriage(R[3]);
 }
-function showTriage(r){ openSheet(sheetHead("התוצאה")+'<div class="callout '+r[0]+'"><b>'+r[1]+'</b><br>'+r[2]+'</div><p class="note">זו לא אבחנה. בכל ספק, ווטרינר זוחלים.</p><button class="btn" data-act="closeSheet">סגירה</button>'); }
+function showTriage(r){ const ov=S.config.vet||{}; openSheet(sheetHead("התוצאה")+'<div class="callout '+r[0]+'"><b>'+r[1]+'</b><br>'+r[2]+'</div>'+(r[0]==="vet"?(ov.phone?'<a class="btn pri" href="'+esc(telHref(ov.phone))+'">חיוג ל'+esc(ov.name||"ווטרינר שלנו")+'</a>':'')+'<button class="btn" data-act="vets">רשימת ווטרינרים לזוחלים</button>':'')+'<p class="note">זו לא אבחנה. בכל ספק, ווטרינר זוחלים.</p><button class="btn ghost" data-act="closeSheet">סגירה</button>'); }
 
 function settingsSheet(){
   const dr = S.dragons.map(d=>'<div class="card" style="display:flex;flex-direction:column;gap:8px" data-drag="'+esc(d.id)+'">'+
@@ -1030,6 +1060,8 @@ document.addEventListener("click", async ev=>{
     case "login": doLogin(); break;
     case "install": doInstall(); break;
     case "invite": doInvite(); break;
+    case "vets": vetsSheet(); break;
+    case "saveVet": { const c=el.closest(".card"); const ph=(c.querySelector("#vPhone").value||"").trim(); if(ph && ph.replace(/\D/g,"").length<7){ toast("מספר הטלפון קצר מדי"); break; } S.config.vet={name:(c.querySelector("#vName").value||"").trim(), phone:ph, note:(c.querySelector("#vNote").value||"").trim()}; await saveConfig(); toast("נשמר"); if($("#layer").innerHTML) vetsSheet(); break; }
     case "rmMember": if(S.confirmDel==="m"+id){ S.confirmDel=null; const {error}=await sb.from("household_members").delete().eq("household_id",S.hh).eq("user_id",id); if(error) toast("ההסרה נכשלה"); else { await loadAll(true); toast("הוסר מהבית"); } settingsSheet(); } else { S.confirmDel="m"+id; settingsSheet(); } break;
     case "leaveHH": if(S.confirmDel==="leave"){ S.confirmDel=null; const {error}=await sb.from("household_members").delete().eq("household_id",S.hh).eq("user_id",user.id); if(error){ toast("לא הצלחתי לעזוב"); break; } closeSheet(); S.hh=null; lsSet("pg.hh",null); S.mode="loading"; render(); loadAll(); } else { S.confirmDel="leave"; settingsSheet(); } break;
     case "switchHH": closeSheet(); S.hh=id; lsSet("pg.hh",id); subscribeLive(); S.mode="loading"; render(); loadAll(); break;
