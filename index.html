@@ -116,6 +116,11 @@ a.btn.pri{color:#1D1606}
 .routine{display:flex;flex-direction:column}
 .rt{display:flex;align-items:center;gap:12px;padding:12px 2px;border-bottom:1px solid var(--line);background:none;border-inline:0;border-top:0;text-align:start;width:100%;min-height:56px}
 .rt:last-child{border-bottom:0}
+div.rt{padding:0}
+.rt .rtm{display:flex;align-items:center;gap:12px;padding:12px 2px;background:none;border:0;text-align:start;flex:1;min-width:0;min-height:56px;color:inherit;font:inherit;cursor:pointer}
+.rt .rtplus{flex:none;width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:var(--surface);font-size:20px;line-height:1;color:var(--ink);cursor:pointer}
+.rt .cnt{font-size:12px;font-weight:700;color:var(--ok);margin-inline-start:6px}
+.rt.undo .ck{background:var(--act);border-color:var(--act)}
 .rt .ck{width:28px;height:28px;border-radius:9px;border:2px solid var(--line);display:grid;place-items:center;flex:none}
 .rt.done .ck{background:var(--ok);border-color:var(--ok)}
 .rt.done .ck svg{stroke:var(--surface)}
@@ -669,8 +674,20 @@ function insectRow(ins, pw){
   const who = eaters.length && eaters.length<S.dragons.length ? "רק ל"+eaters.map(d=>d.name).join(" ו")+" · " : "";
   return rtRow("insect", ins, "חרקים מאובקים", who+"דוביה בקערה עמוקה · "+pw.t+" · להוציא שאריות סלט", "17:00");
 }
+// today's routine entries of a type, grouped into "times" (one tap of the insect sheet logs one row per dragon)
+function routineBatches(type){
+  const L=allLogs().filter(e=>e.type===type && e.ts.slice(0,10)===today()).sort((a,b)=>b.ts.localeCompare(a.ts));
+  const B=[]; L.forEach(e=>{ const last=B[B.length-1], bt=e.v&&e.v.batch, lb=last&&last[0].v&&last[0].v.batch;
+    const same = last && (bt ? bt===lb : (!lb && type==="insect" && e.d!==last[0].d && Math.abs(Date.parse(last[0].ts)-Date.parse(e.ts))<120e3)); // legacy insect rows: one per dragon, seconds apart
+    if(same) last.push(e); else B.push([e]); });
+  return B;
+}
 function rtRow(type, done, t, s, when){
-  return '<button class="rt'+(done?' done':'')+'" data-act="routine" data-type="'+type+'"><span class="ck">'+(done?ico("check"):"")+'</span><span class="t"><b>'+t+'</b><span>'+esc(s)+'</span></span><span class="when">'+(done? (multi()&&whoName(done.by)?esc(whoName(done.by))+" · ":"")+new Date(done.ts).toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"}) : when)+'</span></button>';
+  const B = done ? routineBatches(type) : [];
+  const n = B.length, undo = done && S.confirmDel==="rt:"+type;
+  const whenTxt = done ? (multi()&&whoName(done.by)?esc(whoName(done.by))+" · ":"")+new Date(done.ts).toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"}) : when;
+  return '<div class="rt'+(done?' done':'')+(undo?' undo':'')+'"><button class="rtm" data-act="'+(done?"rtUndo":"routine")+'" data-type="'+type+'" aria-label="'+(done?(undo?"לחצו שוב לביטול הסימון האחרון":"בוצע. לחיצה לביטול"):"סימון כבוצע")+'"><span class="ck">'+(done?(undo?ico("x"):ico("check")):"")+'</span><span class="t"><b>'+t+(n>1?'<span class="cnt">×'+n+'</span>':'')+'</b><span>'+(undo?"לחצו שוב כדי לבטל את הסימון האחרון":esc(s))+'</span></span><span class="when">'+whenTxt+'</span></button>'+
+    (done?'<button class="rtplus" data-act="routine" data-type="'+type+'" aria-label="עוד פעם היום">+</button>':'')+'</div>';
 }
 function dragonCard(d){
   const tr = weightTrend(d.id); const p = dLogs(d.id,"poop").filter(e=>e.d===d.id)[0];
@@ -1414,7 +1431,11 @@ document.addEventListener("click", async ev=>{
     case "colSave": { const n=v=>{ const x=Math.floor(Number(v)); return Number.isFinite(x)&&x>=0&&x<=100000 ? x : 0; }; const patch={f:n($("#colF").value), m:n($("#colM").value)}; closeSheet(); await colPatch(patch); toast("נשמר"); break; }
     case "colOff": closeSheet(); await colPatch({on:false}); break;
     case "colMark": { const k=el.dataset.k; if(!["food","water","clean"].includes(k)) break; await colPatch({[k]:today()}); toast("נרשם"); break; }
-    case "routine": routineSheet(el.dataset.type); break;
+    case "routine": S.confirmDel=null; routineSheet(el.dataset.type); break;
+    case "rtUndo": { const type=el.dataset.type; if(S.confirmDel!=="rt:"+type){ S.confirmDel="rt:"+type; render(); clearTimeout(window._rtT); window._rtT=setTimeout(()=>{ if(S.confirmDel==="rt:"+type){ S.confirmDel=null; render(); } },4000); break; }
+      S.confirmDel=null; const B=routineBatches(type); if(!B.length){ render(); break; }
+      const ids=B[0].map(e=>e.id), prev=S.logs; S.logs=S.logs.filter(e=>!ids.includes(e.id)); render();
+      const {error}=await sb.from("logs").delete().in("id",ids); if(error){ S.logs=prev; render(); fail(error); } else toast("הסימון בוטל"); break; }
     case "quick": S.logDragon=id; S.tab="log"; lsSet("pg.tab","log"); render(); window.scrollTo(0,0); break;
     case "pickDragon": S.logDragon=id; S.confirmDel=null; render(); break;
     case "sheet": sheetFor(el.dataset.type, id); break;
@@ -1422,7 +1443,7 @@ document.addEventListener("click", async ev=>{
       if(n==="multiDay"||n==="plainDay"){ S.config.supp[n]=Number(v); saveConfig(); } else sheetState[n]=v; break; }
     case "stuck": { const on = el.getAttribute("aria-pressed")!=="true"; el.setAttribute("aria-pressed", String(on)); const v=el.dataset.v; sheetState.stuck = on ? [...new Set([...(sheetState.stuck||[]), v])] : (sheetState.stuck||[]).filter(x=>x!==v); break; }
     case "ateFor": el.parentElement.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed", String(b===el))); sheetState.ate[id]=el.dataset.v; break;
-    case "saveRoutineInsect": { const st=sheetState; closeSheet(); try{ for(const d of S.dragons){ if(st.ate[d.id]==="skip") continue; await addLog({d:d.id, type:"insect", v:{ate:st.ate[d.id]||"all", supp:st.supp}}); } toast("ארוחת ערב נרשמה"); }catch(e){} break; }
+    case "saveRoutineInsect": { const st=sheetState, batch=uid(); closeSheet(); try{ for(const d of S.dragons){ if(st.ate[d.id]==="skip") continue; await addLog({d:d.id, type:"insect", v:{ate:st.ate[d.id]||"all", supp:st.supp, batch}}); } toast("ארוחת ערב נרשמה"); }catch(e){} break; }
     case "saveSheet": saveSheet(); break;
     case "logBeh": closeSheet(); try{ await addLog({d:id, type:"behavior", v:{b:el.dataset.b}}); toast("נרשם"); }catch(e){} break;
     case "delLog": if(S.confirmDel===id){ S.confirmDel=null; removeLog(id); } else { S.confirmDel=id; render(); } break;
