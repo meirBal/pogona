@@ -1,0 +1,12 @@
+-- support admin (applied: admin_support_access)
+-- app_admins(user_id) seeded with the owner's account; no RLS policies (read only by security definer functions)
+-- admin_access_log(admin_id, household_id, at): every admin_enter() call
+-- is_admin(); is_member(h) now also true for admins -> admins can read/fix any household through the normal policies
+-- admin_overview(): counts + per-household members (email, last sign-in), dragons, activity — raises unless is_admin()
+-- admin_enter(hh): logs access, returns {id,name} — raises unless is_admin()
+-- hardening (applied: admin_session_scoped_access, admin_overview_logged)
+-- is_member(h): admin branch only while an admin_access_log row for h is < 2 hours old (session opened by admin_enter)
+-- is_real_member(h): household_members row only; used by create_invite and push_subscriptions guard trigger
+-- admin_overview() is volatile and writes admin_overview_log on every call
+-- storage policy "admin session reads photos" (additive)
+-- revoked all table grants on app_admins / admin_access_log / admin_overview_log from anon, authenticated
