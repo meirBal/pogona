@@ -198,6 +198,13 @@ table.g tr:last-child td{border-bottom:0}
 .hero .txt .big{font-size:44px}
 .hero .bgd{position:absolute;inset-inline-end:-18px;bottom:-14px;width:54%;opacity:.5}
 .hero .bgd svg{width:100%;height:auto}
+.hero.has-cover{background:#222 center/cover no-repeat;min-height:170px;color:#fff}
+.hero.has-cover::before{content:"";position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.65),rgba(0,0,0,.05) 70%)}
+.hero.has-cover .muted{color:rgba(255,255,255,.85)}
+.hero .camb{position:absolute;top:10px;left:10px;z-index:2;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.85);color:#222;cursor:pointer;border:0}
+.hero .camb svg{width:20px;height:20px}
+.davatar{width:64px;height:64px;border-radius:14px;overflow:hidden;flex:none;background:var(--accent-soft);display:grid;place-items:center}
+.davatar img{width:100%;height:100%;object-fit:cover}.davatar svg{width:100%;height:auto}
 .chart svg{width:100%;height:auto;display:block}
 .empty{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;padding:18px 8px;color:var(--muted)}
 .empty svg{width:140px}
@@ -501,8 +508,8 @@ async function loadAll(quiet){
   if(dr.error||bu.error||lo.error){ if(!quiet){ S.mode="error"; render(); } return; }
   S.dragons=dr.data.map(fromDragon); S.bulbs=bu.data.map(fromBulb); S.logs=lo.data.map(fromLog); S.members=me.data||[]; S.photos=(ph&&!ph.error&&ph.data)||[];
   if(!se.data) S.config={supp:{plainDay:-1,d3:false}, salad:{prepared:null}, shop:{}, vet:{}, location:{}, colony:{}, powders:[]};
-  if(se.data) S.config={supp:Object.assign({plainDay:-1,d3:false}, se.data.supp||{}), salad:{prepared:se.data.salad_prepared||null}, shop:se.data.shop||{}, vet:se.data.vet||{}, location:se.data.location||{}, colony:se.data.colony||{}, powders:Array.isArray(se.data.powders)?se.data.powders:[]};
-  const paths=S.dragons.map(d=>d.photo).filter(p=>p && !photoUrls[p]);
+  if(se.data) S.config={supp:Object.assign({plainDay:-1,d3:false}, se.data.supp||{}), salad:{prepared:se.data.salad_prepared||null}, shop:se.data.shop||{}, vet:se.data.vet||{}, location:se.data.location||{}, colony:se.data.colony||{}, powders:Array.isArray(se.data.powders)?se.data.powders:[], cover:se.data.cover||null};
+  const paths=S.dragons.map(d=>d.photo).concat([S.config.cover]).filter(p=>p && !photoUrls[p]);
   if(paths.length){ const {data}=await sb.storage.from("photos").createSignedUrls(paths, 86400); (data||[]).forEach(x=>{ if(x.signedUrl) photoUrls[x.path]=x.signedUrl; }); }
   S.mode="ready"; render();
   if(S.isAdmin===undefined){ S.isAdmin=false; sb.rpc("is_admin").then(({data})=>{ S.isAdmin=data===true; if(S.isAdmin) render(); }).catch(()=>{}); }
@@ -636,7 +643,8 @@ function viewToday(){
   const now = new Date(); const hr = now.getHours();
   const greet = hr<5?"לילה טוב":hr<12?"בוקר טוב":hr<17?"צהריים טובים":hr<21?"ערב טוב":"לילה טוב";
   const pw = powderFor(today());
-  let h = '<section class="hero"><div class="txt"><div class="small muted">'+esc(heDateLong(now))+'</div><div class="big">'+greet+'</div><div class="small">'+(S.dragons.length? esc(S.dragons.map(d=>d.name).join(" ו")) : "הוסף את החרדונים שלך בהגדרות")+'</div></div><div class="bgd">'+dragonSVG({ground:false, anim:"anim-bob-slow"})+'</div></section>';
+  const cov = S.config.cover && photoUrls[S.config.cover];
+  let h = '<section class="hero'+(cov?' has-cover" style="background-image:url(&quot;'+esc(cov)+'&quot;)"':'"')+'><label class="camb" for="coverIn" aria-label="'+(cov?"החלפת תמונת הכותרת":"תמונה אישית במקום האיור")+'">'+ico("cam")+'</label><input hidden id="coverIn" type="file" accept="image/*" data-cover="1"><div class="txt"><div class="small muted">'+esc(heDateLong(now))+'</div><div class="big">'+greet+'</div><div class="small">'+(S.dragons.length? esc(S.dragons.map(d=>d.name).join(" ו")) : "הוסף את החרדונים שלך בהגדרות")+'</div></div>'+(cov?'':'<div class="bgd">'+dragonSVG({ground:false, anim:"anim-bob-slow"})+'</div>')+'</section>'+(S.config.cover?'<div class="row" style="justify-content:flex-end;margin-top:-6px"><button class="btn sm ghost" data-act="coverReset">חזרה לאיור</button></div>':'');
   if(!S.dragons.length){
     h += '<div class="card empty">'+dragonSVG({ground:false})+'<b>עוד אין כאן חרדונים</b><span class="small">הוסף חרדון עם שם, מין וגיל משוער, ואז התחל לרשום משקל וארוחות.</span><button class="btn pri" data-act="settings">הוספת חרדון</button></div>';
     return h;
@@ -687,6 +695,7 @@ function viewLog(){
   if(!S.logDragon || !dragonById(S.logDragon)) S.logDragon = S.dragons[0].id;
   const d = dragonById(S.logDragon);
   let h = '<div class="seg" role="group" aria-label="בחירת חרדון">'+S.dragons.map(x=>'<button data-act="pickDragon" data-id="'+esc(x.id)+'" aria-pressed="'+(x.id===d.id)+'">'+esc(x.name)+'</button>').join("")+'</div>';
+  h += '<div class="card row" style="gap:12px;margin-top:10px"><div class="davatar">'+avatarHTML(d)+'</div><div class="grow"><b>'+esc(d.name)+'</b><div class="small muted">'+(d.photo?"התמונה שלכם מופיעה בכרטיס במסך הבית":"עכשיו מוצג איור. אפשר לשים תמונה אמיתית")+'</div></div><label class="btn sm" for="av_'+esc(d.id)+'">'+(d.photo?"החלפה":"תמונה אישית")+'</label><input hidden id="av_'+esc(d.id)+'" type="file" accept="image/*" data-photo="'+esc(d.id)+'">'+(d.photo?'<button class="btn sm ghost" data-act="avReset" data-id="'+esc(d.id)+'">איור</button>':'')+'</div>';
   h += '<section class="sec"><div class="sec-h"><h2>רישום מהיר</h2><span class="hint">'+esc(d.name)+'</span></div><div class="qgrid">'+
     [["weight","weight","משקל"],["poop","poop","קקי ואוראט"],["insect","bug","ארוחת חרקים"],["shed","shed","השלה"],["behavior","heart","התנהגות"],["note","note","הערה"]]
       .map(([t,i,l])=>'<button class="qbtn" data-act="sheet" data-type="'+t+'" data-id="'+esc(d.id)+'">'+ico(i)+'<span>'+l+'</span></button>').join("")+'</div></section>';
@@ -721,15 +730,28 @@ function tlSheet(id){
     '<div class="small">'+(d&&d.hatch&&monthsOld(d.hatch)!==null?'בגיל בערך '+Math.max(0,monthsOld(d.hatch)-Math.round((parseD(today())-parseD(p.taken))/(30.4*864e5)))+' חודשים':'')+(w?' · '+w.g+' ג׳ בשקילה הקרובה':'')+'</div>'+(p.note?'<div class="small">'+esc(p.note)+'</div>':'')+
     '<button class="btn ghost danger" data-act="tlDel" data-id="'+esc(p.id)+'">'+(S.confirmDel===p.id?"למחוק את התמונה?":"מחיקה")+'</button>');
 }
-async function compressImage(f){
+async function compressImage(f, maxSide=1600){
   try{
     const bmp = await createImageBitmap(f, {imageOrientation:"from-image"});
-    const sc = Math.min(1, 1600/Math.max(bmp.width,bmp.height));
+    const sc = Math.min(1, maxSide/Math.max(bmp.width,bmp.height));
     const c=document.createElement("canvas"); c.width=Math.round(bmp.width*sc); c.height=Math.round(bmp.height*sc);
     c.getContext("2d").drawImage(bmp,0,0,c.width,c.height); bmp.close&&bmp.close();
     const b = await new Promise(res=>c.toBlob(res,"image/jpeg",0.82));
     return b && b.type==="image/jpeg" ? b : null; // re-encoded JPEG only: strips EXIF/GPS
   }catch(e){ return null; }
+}
+async function uploadCover(f0){
+  toast("מעלה תמונה…");
+  const f = await compressImage(f0, 1600);
+  if(!f){ toast("הפורמט לא נתמך בדפדפן הזה. נסו JPEG או PNG"); return; }
+  const path = S.hh+"/cover-"+Date.now()+".jpg";
+  const up = await sb.storage.from("photos").upload(path, f, {contentType:"image/jpeg"});
+  if(up.error){ toast("ההעלאה נכשלה"); return; }
+  const {error} = await sb.from("household_settings").update({cover:path}).eq("household_id",S.hh);
+  if(error){ sb.storage.from("photos").remove([path]); fail(error); return; }
+  const su = await sb.storage.from("photos").createSignedUrl(path, 86400); if(su.data) photoUrls[path]=su.data.signedUrl;
+  const old=S.config.cover; S.config.cover=path; render(); toast("התמונה נשמרה");
+  if(old) sb.storage.from("photos").remove([old]);
 }
 async function uploadTimeline(did, f){
   if(!/^image\//.test(f.type||"image/")){ toast("צריך קובץ תמונה"); return; }
@@ -1371,6 +1393,8 @@ document.addEventListener("click", async ev=>{
   switch(a){
     case "closeSheet": closeSheet(); break;
     case "settings": settingsSheet(); break;
+    case "coverReset": { const old=S.config.cover; const {error}=await sb.from("household_settings").update({cover:null}).eq("household_id",S.hh); if(error){ fail(error); break; } S.config.cover=null; render(); if(old) sb.storage.from("photos").remove([old]); break; }
+    case "avReset": { const d=Object.assign({},dragonById(id)); if(!d.id) break; const old=d.photo; d.photo=null; await saveDragon(d); if(old) sb.storage.from("photos").remove([old]); break; }
     case "admin": adminSheet(); break;
     case "adminEnter": adminEnter(id); break;
     case "adminExit": adminExit(); break;
@@ -1460,18 +1484,19 @@ document.addEventListener("change", async ev=>{
   if(ev.target.id==="rsFile" && ev.target.files[0]){ $("#rs").value = await ev.target.files[0].text(); return; }
   const tl = ev.target.dataset && ev.target.dataset.tl;
   if(tl && ev.target.files && ev.target.files[0]){ const f=ev.target.files[0]; ev.target.value=""; await uploadTimeline(tl, f); return; }
+  if(ev.target.dataset && ev.target.dataset.cover && ev.target.files && ev.target.files[0]){ const f=ev.target.files[0]; ev.target.value=""; await uploadCover(f); return; }
   const pid = ev.target.dataset && ev.target.dataset.photo; if(!pid) return;
-  const f = ev.target.files && ev.target.files[0]; if(!f) return;
-  if(f.size > 10*1024*1024){ toast("התמונה גדולה מדי (עד 10MB)"); return; }
+  const f0 = ev.target.files && ev.target.files[0]; if(!f0) return; ev.target.value="";
   toast("מעלה תמונה…");
-  const ext = (f.name.split(".").pop()||"jpg").toLowerCase().replace(/[^a-z0-9]/g,"") || "jpg";
-  const path = S.hh+"/"+pid+"-"+Date.now()+"."+ext;
-  const up = await sb.storage.from("photos").upload(path, f, {contentType:f.type||"image/jpeg", upsert:true});
+  const f = await compressImage(f0, 900);
+  if(!f){ toast("הפורמט לא נתמך בדפדפן הזה. נסו JPEG או PNG"); return; }
+  const path = S.hh+"/"+pid+"-"+Date.now()+".jpg";
+  const up = await sb.storage.from("photos").upload(path, f, {contentType:"image/jpeg"});
   if(up.error){ toast("ההעלאה נכשלה"); return; }
   const su = await sb.storage.from("photos").createSignedUrl(path, 86400); if(su.data) photoUrls[path]=su.data.signedUrl;
   const d=Object.assign({},dragonById(pid)); const oldp=d.photo; d.photo=path; await saveDragon(d);
   if(oldp) sb.storage.from("photos").remove([oldp]);
-  toast("התמונה נשמרה"); settingsSheet();
+  toast("התמונה נשמרה"); if($("#layer").innerHTML) settingsSheet();
 });
 async function doLogin(){
   const email = ($("#authEmail").value||"").trim();
