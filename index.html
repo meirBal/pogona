@@ -695,17 +695,17 @@ function viewLog(){
   return h;
 }
 /* ---------------- photo timeline ---------------- */
-let tlSigning=false;
+let tlSigning=false; const tlTried=new Set();
 async function signPhotos(paths){
-  const need=paths.filter(p=>p && !photoUrls[p]); if(!need.length || tlSigning) return;
-  tlSigning=true;
-  try{ const {data}=await sb.storage.from("photos").createSignedUrls(need.slice(0,100), 86400); (data||[]).forEach(x=>{ if(x.signedUrl) photoUrls[x.path]=x.signedUrl; }); }catch(e){}
-  tlSigning=false; render();
+  const need=paths.filter(p=>p && !photoUrls[p] && !tlTried.has(p)).slice(0,100); if(!need.length || tlSigning) return;
+  tlSigning=true; need.forEach(p=>tlTried.add(p)); let added=0;
+  try{ const {data}=await sb.storage.from("photos").createSignedUrls(need, 86400); (data||[]).forEach(x=>{ if(x.signedUrl){ photoUrls[x.path]=x.signedUrl; added++; } }); }catch(e){}
+  tlSigning=false; if(added) render();
 }
 function weightNear(id, date){ const w=weights(id); let best=null; w.forEach(x=>{ const dd=Math.abs(parseD(x.date)-parseD(date))/864e5; if(dd<=7 && (!best || dd<best.dd)) best={g:x.g, dd}; }); return best; }
 function timelineHTML(d){
   const list=(S.photos||[]).filter(p=>p.dragon_id===d.id);
-  const missing=list.map(p=>p.path).filter(p=>!photoUrls[p]); if(missing.length && !tlSigning) setTimeout(()=>signPhotos(missing),0);
+  const missing=list.map(p=>p.path).filter(p=>!photoUrls[p] && !tlTried.has(p)); if(missing.length && !tlSigning) setTimeout(()=>signPhotos(missing),0);
   let h='<section class="sec"><div class="sec-h"><h2>ציר תמונות</h2><label class="btn sm" for="tl_'+esc(d.id)+'">+ תמונה</label><input hidden id="tl_'+esc(d.id)+'" type="file" accept="image/*" data-tl="'+esc(d.id)+'"></div>';
   if(!list.length) return h+'<div class="card small muted">תמונה אחת בחודש, מאותה זווית, מראה גדילה, צבע ומצב גוף טוב יותר מכל מספר.</div></section>';
   h+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">'+list.slice(0,30).map(p=>{ const w=weightNear(d.id,p.taken); const u=photoUrls[p.path];
@@ -725,16 +725,18 @@ async function compressImage(f){
     const c=document.createElement("canvas"); c.width=Math.round(bmp.width*sc); c.height=Math.round(bmp.height*sc);
     c.getContext("2d").drawImage(bmp,0,0,c.width,c.height); bmp.close&&bmp.close();
     const b = await new Promise(res=>c.toBlob(res,"image/jpeg",0.82));
-    return b && b.size < f.size ? b : f;
-  }catch(e){ return f; }
+    return b && b.type==="image/jpeg" ? b : null; // re-encoded JPEG only: strips EXIF/GPS
+  }catch(e){ return null; }
 }
 async function uploadTimeline(did, f){
   if(!/^image\//.test(f.type||"image/")){ toast("צריך קובץ תמונה"); return; }
-  if(f.size > 20*1024*1024){ toast("התמונה גדולה מדי (עד 20MB)"); return; }
+  if(f.size > 40*1024*1024){ toast("התמונה גדולה מדי"); return; }
   toast("מעלה תמונה…");
   const blob = await compressImage(f);
+  if(!blob){ toast("הפורמט לא נתמך בדפדפן הזה. נסו לצלם שוב או לבחור JPEG/PNG"); return; }
+  if(blob.size > 10*1024*1024){ toast("התמונה גדולה מדי"); return; }
   const path = S.hh+"/tl/"+did+"-"+Date.now()+".jpg";
-  const up = await sb.storage.from("photos").upload(path, blob, {contentType: blob.type||"image/jpeg"});
+  const up = await sb.storage.from("photos").upload(path, blob, {contentType:"image/jpeg"});
   if(up.error){ toast("ההעלאה נכשלה"); return; }
   const {data,error} = await sb.from("dragon_photos").insert({household_id:S.hh, dragon_id:did, path, taken:today()}).select("id,dragon_id,path,taken,note").single();
   if(error){ sb.storage.from("photos").remove([path]); fail(error); return; }
@@ -807,12 +809,12 @@ function agePlanHTML(){
 /* ---------------- supplement powders ---------------- */
 const POW_KINDS=[["ca","סידן"],["d3","סידן עם D3"],["multi","מולטי־ויטמין"]];
 const POW_OPEN_MONTHS=6; // app's conservative rule; label stays specific to this app
-async function savePowders(){ render(); const {error}=await sb.from("household_settings").update({powders:S.config.powders||[], updated_at:new Date().toISOString()}).eq("household_id",S.hh); if(error) fail(error); }
+async function powderRpc(fn, args){ render(); const {data,error}=await sb.rpc(fn, Object.assign({hh:S.hh}, args)); if(error){ fail(error); return; } if(Array.isArray(data)){ S.config.powders=data; render(); } }
 function powderAlerts(){
   const A=[]; (S.config.powders||[]).forEach(p=>{
     const nm=p.name||(POW_KINDS.find(k=>k[0]===p.kind)||[,"אבקה"])[1];
     if(p.exp && /^\d{4}-\d{2}-\d{2}$/.test(p.exp) && daysSince(p.exp)>=0) A.push(["act", nm+": פג תוקף", "התוקף על האריזה עבר ב־"+heDate(p.exp)+". להחליף."]);
-    else if(p.opened && /^\d{4}-\d{2}-\d{2}$/.test(p.opened) && daysSince(p.opened)/30.4>=POW_OPEN_MONTHS) A.push(["watch", nm+": פתוחה "+Math.floor(daysSince(p.opened)/30.4)+" חודשים", "כדאי להחליף. ויטמינים נחלשים עם הזמן אחרי פתיחה, במיוחד בחום ובלחות."]);
+    else if(p.kind!=="ca" && p.opened && /^\d{4}-\d{2}-\d{2}$/.test(p.opened) && daysSince(p.opened)/30.4>=POW_OPEN_MONTHS) A.push(["watch", nm+": פתוחה "+Math.floor(daysSince(p.opened)/30.4)+" חודשים", "כדאי להחליף. ויטמינים (כולל D3) נחלשים אחרי פתיחה, והתוקף על האריזה תקף רק לסגורה. סידן נקי לא דורש החלפה כזו."]);
     else if(p.exp && /^\d{4}-\d{2}-\d{2}$/.test(p.exp) && daysSince(p.exp)>=-30) A.push(["info", nm+": התוקף נגמר בקרוב", "עד "+heDate(p.exp)+"."]);
   }); return A;
 }
@@ -833,8 +835,8 @@ function powderSheet(id){
 async function savePowderFromSheet(){
   const ok=v=>/^\d{4}-\d{2}-\d{2}$/.test(v)?v:"";
   const st=sheetState; const p={id:st.id||uid(), kind:POW_KINDS.some(k=>k[0]===(st.powKind||st.kind))?(st.powKind||st.kind):"ca", name:($("#powName").value||"").trim().slice(0,40), opened:ok($("#powOpen").value), exp:ok($("#powExp").value)};
-  const L=(S.config.powders||[]).filter(x=>x.id!==p.id); L.push(p); S.config.powders=L.slice(-20);
-  closeSheet(); await savePowders(); settingsSheet();
+  const L=(S.config.powders||[]).filter(x=>x.id!==p.id); if(!st.id && L.length>=20){ toast("עד 20 אבקות"); return; } L.push(p); S.config.powders=L;
+  closeSheet(); await powderRpc("powder_upsert",{item:p}); settingsSheet();
 }
 
 /* ---------------- vacation / sitter ---------------- */
@@ -850,7 +852,7 @@ function sitterText(){
   lines.push("סלט בבוקר מהקופסה במקרר, חרקים אחר הצהריים בקערה עמוקה. להוציא שאריות סלט וחרקים שלא נאכלו.");
   lines.push("אור וחום: לא לגעת בטיימרים ובטרמוסטט. לא להדליק נורה אדומה בלילה.");
   lines.push("מים: ריסוס קל בבוקר, על החרדון ולא על כל הטרריום.");
-  lines.push("", "מתי להתקשר אליי מיד: מפסיק לאכול גם סלט, רדום ולא מגיב, נפיחות, דימום, קשיי נשימה, עור תקוע שמשחיר, נורה שנשרפה.");
+  lines.push("", "מתי להתקשר אליי מיד: לא אוכל וגם חלש או רדום, לא מגיב, נפיחות, דימום, קשיי נשימה, עור תקוע שמשחיר, נורה שנשרפה.");
   if(ov.name||ov.phone) lines.push("ווטרינר: "+(ov.name||"")+(ov.phone?" "+ov.phone:""));
   lines.push("", "אפשר לרשום הכול באפליקציה פוגונה: https://meirbal.github.io/pogona/");
   return lines.join("\n");
@@ -859,7 +861,7 @@ function sitterSheet(){
   openSheet(sheetHead("מצב חופשה")+'<div class="small">דף הוראות קצר למי ששומר על החרדונים, לפי הגיל וההגדרות שלכם. אפשר לשלוח בווטסאפ.</div>'+
     '<pre class="card small" style="white-space:pre-wrap;font-family:inherit;margin:0;max-height:45vh;overflow:auto">'+esc(sitterText())+'</pre>'+
     '<button class="btn pri" data-act="sitterShare">שליחה או העתקה</button>'+
-    '<div class="small muted">רוצים שהמטפל גם ירשום ארוחות באפליקציה? הזמינו אותו כבן בית ב"בני הבית", והסירו אותו כשאתם חוזרים.</div>'+
+    '<div class="small muted">רוצים שהמטפל גם ירשום ארוחות באפליקציה? אפשר להזמין אותו כבן בית. שימו לב: בן בית רואה ועורך הכול, כולל פרטי הווטרינר. הסירו אותו ב"בני הבית" כשאתם חוזרים.</div>'+
     '<button class="btn" data-act="invite">הזמנת המטפל לאפליקציה</button>');
 }
 
@@ -896,8 +898,8 @@ function colonyHTML(){
     '<div><b>חום ולחות:</b> לרבייה צריך 32–35° ולחות של בערך 60%. בטמפרטורת חדר הרבייה איטית מאוד. משטח חימום מתחת לחלק מהקופסה, על טרמוסטט.</div>'+
     '<div><b>אוכל ומים:</b> מזון יבש (דגנים או מזון ייעודי) כל הזמן. מים רק כג׳ל או גבישי מים בצלוחית רדודה, בנפרד מהיבש, כי בקערת מים הם טובעים. ירק ופרי בתוספת, ומוציאים לפני שמעפיש: עובש עלול להרוג את המושבה.</div>'+
     '<div><b>יחס:</b> בערך זכר אחד לכל 3–5 נקבות. לזכרים יש כנפיים מלאות, לנקבות כנפיים קצרות.</div>'+
-    '<div><b>סבלנות:</b> לנימפות לוקח כמה חודשים להתבגר, ולכן מושבה חדשה מתחילה לספק רק אחרי כמה חודשים.</div>'+
-    '<div><b>ניקיון:</b> להוציא לשלשת ושאריות כל שבוע־שבועיים.</div><div><b>לפני האכלה:</b> ירק טוב לדוביה שהולכים להגיש, כדי שמה שהם אכלו יגיע לחרדון.</div>'+
+    '<div><b>סבלנות:</b> נקבה מגיעה לרבייה בגיל 3–4 חודשים, ובחום מתאים יולדת בערך 20–40 נימפות כל חודשיים. הנימפות צריכות עוד זמן עד גודל האכלה, ולכן מושבה חדשה מתחילה לספק רק אחרי כמה חודשים.</div>'+
+    '<div><b>ניקיון:</b> להוציא לשלשת ושאריות כל שבוע־שבועיים.</div><div><b>לפני האכלה:</b> ירק טוב לדוביה שהולכים להגיש, לפחות 48 שעות לפני, כדי שמה שהם אכלו יגיע לחרדון.</div>'+
     '<div class="muted">הערכת הנקבות והצריכה היא קירוב גס של האפליקציה, והקצב משתנה מאוד לפי חום ותזונה. תנאי האחזקה לפי <a class="src" href="https://www.dubiaroaches.com/pages/dubia-roach-care-sheet" target="_blank" rel="noopener">דף האחזקה של DubiaRoaches.com ↗</a> (מגדל מסחרי).</div></div></details></section>';
   return h;
 }
@@ -1335,12 +1337,12 @@ document.addEventListener("click", async ev=>{
     case "settings": settingsSheet(); break;
     case "tlOpen": S.confirmDel=null; tlSheet(id); break;
     case "tlDel": { const p=(S.photos||[]).find(x=>x.id===id); if(!p) break; if(S.confirmDel!==id){ S.confirmDel=id; tlSheet(id); break; } S.confirmDel=null; closeSheet();
-      const {error}=await sb.from("dragon_photos").delete().eq("id",id); if(error){ fail(error); break; }
-      sb.storage.from("photos").remove([p.path]); S.photos=S.photos.filter(x=>x.id!==id); render(); toast("נמחקה"); break; }
+      const {data:gone,error}=await sb.from("dragon_photos").delete().eq("id",id).select("id"); if(error||!gone||!gone.length){ toast("רק מי שהעלה את התמונה או בעל הבית יכולים למחוק"); break; }
+      const rm=await sb.storage.from("photos").remove([p.path]); if(rm.error) console.error(rm.error); S.photos=S.photos.filter(x=>x.id!==id); render(); toast("נמחקה"); break; }
     case "powAdd": powderSheet(null); break;
     case "powEdit": powderSheet(id); break;
     case "powSave": await savePowderFromSheet(); break;
-    case "powDel": { S.config.powders=(S.config.powders||[]).filter(x=>x.id!==id); closeSheet(); await savePowders(); settingsSheet(); break; }
+    case "powDel": { S.config.powders=(S.config.powders||[]).filter(x=>x.id!==id); closeSheet(); await powderRpc("powder_delete",{pid:id}); settingsSheet(); break; }
     case "sitter": sitterSheet(); break;
     case "sitterShare": { const txt=sitterText(); try{ if(navigator.share){ await navigator.share({title:"הוראות לחרדונים", text:txt}); break; } }catch(e){ if(e && e.name==="AbortError") break; }
       try{ await navigator.clipboard.writeText(txt); toast("הועתק"); }catch(e){ toast("לא הצלחתי להעתיק"); } break; }

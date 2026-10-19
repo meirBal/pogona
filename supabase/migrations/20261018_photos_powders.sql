@@ -17,3 +17,8 @@ create policy "members add photos" on public.dragon_photos for insert to authent
 create policy "members delete photos" on public.dragon_photos for delete to authenticated using (public.is_member(household_id));
 alter publication supabase_realtime add table public.dragon_photos;
 alter table public.household_settings add column if not exists powders jsonb not null default '[]'::jsonb;
+
+-- hardening (applied: photos_powders_hardening_additive) — see migration in Supabase for full bodies:
+-- photo_path_timeline check, dragon_photos_owner trigger (owner := auth.uid()),
+-- dragon_photos_guard_delete trigger (uploader or household owner only),
+-- powder_upsert(hh, item) / powder_delete(hh, pid) RPCs that edit one item server-side.
