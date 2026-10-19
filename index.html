@@ -616,7 +616,7 @@ function render(){
   else if(tab==="beh") h += viewBeh();
   else if(tab==="food") h += viewFood();
   else if(tab==="setup") h += viewSetup();
-  if(S.adminView) h = '<div class="callout watch small row" style="justify-content:space-between;gap:8px;margin-bottom:10px"><span><b>מצב אדמין</b> · צופה ועורך את '+esc(S.adminView.name||"הבית")+'. כל שינוי נשמר אצלם.</span><button class="btn sm" data-act="adminExit">יציאה</button></div>' + h;
+  if(S.adminView) h = '<div class="callout watch small row" style="justify-content:space-between;gap:8px;margin-bottom:10px"><span><b>מצב אדמין</b> · צופה ועורך את '+esc(S.adminView.name||"הבית")+'. כל שינוי נשמר אצלם. הגישה נסגרת אוטומטית אחרי שעתיים.</span><button class="btn sm" data-act="adminExit">יציאה</button></div>' + h;
   v.innerHTML = h;
   $("#brandArt").innerHTML = dragonSVG({ground:false, small:false});
   if(tab==="setup" && S.setupSeg==="calc") drawLayout();
@@ -694,7 +694,7 @@ function viewLog(){
   h += '<section class="sec"><div class="sec-h"><h2>גרף משקל</h2><span class="hint">גרם</span></div><div class="card chart">'+weightChart(d.id)+'</div></section>';
   const L = dLogs(d.id).slice(0,40);
   h += '<section class="sec"><div class="sec-h"><h2>היסטוריה</h2><span class="hint">'+L.length+' אחרונות</span></div><div class="card list">'+(L.length? L.map(logRow).join("") : '<div class="empty small">עוד לא נרשם כלום. התחל משקילה.</div>')+'</div></section>';
-  h += '<section class="sec"><div class="row wrap"><button class="btn" data-act="vetSummary">'+'סיכום לווטרינר'+'</button><button class="btn" data-act="backup">גיבוי</button><button class="btn" data-act="restore">שחזור מגיבוי</button></div></section>';
+  h += '<section class="sec"><div class="row wrap"><button class="btn" data-act="vetSummary">'+'סיכום לווטרינר'+'</button><button class="btn" data-act="backup">גיבוי</button>'+(S.adminView?'':'<button class="btn" data-act="restore">שחזור מגיבוי</button>')+'</div></section>';
   return h;
 }
 /* ---------------- photo timeline ---------------- */
@@ -1262,7 +1262,7 @@ async function refreshPush(){
     if(pushState.sub){
       const r=await sb.from("push_subscriptions").select("*").eq("endpoint", pushState.sub.endpoint).maybeSingle(); pushState.row=r.data||null;
       // permission still granted but our row is gone (cleaned up) or household changed: re-register silently
-      if(Notification.permission==="granted" && (!pushState.row || pushState.row.household_id!==S.hh)) pushState.row = await saveSub(pushState.sub);
+      if(!S.adminView && Notification.permission==="granted" && (!pushState.row || pushState.row.household_id!==S.hh)) pushState.row = await saveSub(pushState.sub);
     }
   }catch(e){ console.error(e); }
   pushState.checked=true;
