@@ -14,7 +14,7 @@
 - מפתח ה־publishable בקוד בטוח לחשיפה; ההרשאות נאכפות ב־RLS
 
 ## טבלאות
-`households`, `household_members`, `household_invites`, `household_settings` (כולל `vet`, `location` ו־`colony` jsonb; מזג אוויר מ־Open-Meteo), `dragons`, `bulbs`, `logs` (type + jsonb `v`). הגישה לפי חברות במשק בית (`is_member`), הזמנה בקישור `?join=CODE`, עדכון חי ב־Realtime.
+`households`, `household_members`, `household_invites`, `household_settings` (כולל `vet`, `location`, `colony` ו־`powders` jsonb), `dragon_photos` (ציר תמונות, קבצים ב־bucket `photos` מזג אוויר מ־Open-Meteo), `dragons`, `bulbs`, `logs` (type + jsonb `v`). הגישה לפי חברות במשק בית (`is_member`), הזמנה בקישור `?join=CODE`, עדכון חי ב־Realtime.
 
 ## הרצה מקומית
 ```

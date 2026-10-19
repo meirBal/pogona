@@ -484,22 +484,23 @@ function subscribeLive(){
   if(live){ sb.removeChannel(live); live=null; }
   const f = "household_id=eq."+S.hh, again = ()=>{ clearTimeout(liveT); liveT=setTimeout(()=>{ if(!$("#layer").innerHTML) loadAll(true); else pendingReload=true; }, 400); };
   live = sb.channel("hh-"+S.hh);
-  ["logs","dragons","bulbs","household_settings","household_members"].forEach(t=> live.on("postgres_changes", {event:"*", schema:"public", table:t, filter:f}, again));
+  ["logs","dragons","bulbs","household_settings","household_members","dragon_photos"].forEach(t=> live.on("postgres_changes", {event:"*", schema:"public", table:t, filter:f}, again));
   live.subscribe();
 }
 async function loadAll(quiet){
   if(!S.hh){ const ok = await pickHousehold(); if(!ok){ S.mode="error"; render(); return; } subscribeLive(); }
   const since=new Date(Date.now()-400*864e5).toISOString(), H=S.hh;
-  const [dr,bu,lo,se,me]=await Promise.all([
+  const [dr,bu,lo,se,me,ph]=await Promise.all([
     sb.from("dragons").select("*").eq("household_id",H).order("sort").order("created_at"),
     sb.from("bulbs").select("*").eq("household_id",H).order("installed"),
     sb.from("logs").select("*").eq("household_id",H).gte("ts",since).order("ts",{ascending:false}).limit(5000),
     sb.from("household_settings").select("*").eq("household_id",H).maybeSingle(),
-    sb.from("household_members").select("user_id, role, display_name, joined_at").eq("household_id",H).order("joined_at")
+    sb.from("household_members").select("user_id, role, display_name, joined_at").eq("household_id",H).order("joined_at"),
+    sb.from("dragon_photos").select("id,dragon_id,path,taken,note").eq("household_id",H).order("taken",{ascending:false}).order("created_at",{ascending:false}).limit(500)
   ]);
   if(dr.error||bu.error||lo.error){ if(!quiet){ S.mode="error"; render(); } return; }
-  S.dragons=dr.data.map(fromDragon); S.bulbs=bu.data.map(fromBulb); S.logs=lo.data.map(fromLog); S.members=me.data||[];
-  if(se.data) S.config={supp:Object.assign({plainDay:-1,d3:false}, se.data.supp||{}), salad:{prepared:se.data.salad_prepared||null}, shop:se.data.shop||{}, vet:se.data.vet||{}, location:se.data.location||{}, colony:se.data.colony||{}};
+  S.dragons=dr.data.map(fromDragon); S.bulbs=bu.data.map(fromBulb); S.logs=lo.data.map(fromLog); S.members=me.data||[]; S.photos=(ph&&!ph.error&&ph.data)||[];
+  if(se.data) S.config={supp:Object.assign({plainDay:-1,d3:false}, se.data.supp||{}), salad:{prepared:se.data.salad_prepared||null}, shop:se.data.shop||{}, vet:se.data.vet||{}, location:se.data.location||{}, colony:se.data.colony||{}, powders:Array.isArray(se.data.powders)?se.data.powders:[]};
   const paths=S.dragons.map(d=>d.photo).filter(p=>p && !photoUrls[p]);
   if(paths.length){ const {data}=await sb.storage.from("photos").createSignedUrls(paths, 86400); (data||[]).forEach(x=>{ if(x.signedUrl) photoUrls[x.path]=x.signedUrl; }); }
   S.mode="ready"; render();
@@ -592,6 +593,7 @@ function computeAlerts(){
   });
   const sp = S.config.salad.prepared;
   if(sp){ const age = daysSince(sp); if(age>=4) A.push(["watch","קופסת הסלט ישנה","הוכנה לפני "+age+" ימים. הזמן להכין חדשה."]); else if(age===3) A.push(["info","הסלט נגמר מחר","זמן לתכנן הכנה חדשה."]); }
+  powderAlerts().forEach(a=>A.push(a));
   const order = {vet:0, act:1, watch:2, info:3};
   return A.sort((a,b)=>order[a[0]]-order[b[0]]);
 }
@@ -685,11 +687,59 @@ function viewLog(){
   h += '<section class="sec"><div class="sec-h"><h2>רישום מהיר</h2><span class="hint">'+esc(d.name)+'</span></div><div class="qgrid">'+
     [["weight","weight","משקל"],["poop","poop","קקי ואוראט"],["insect","bug","ארוחת חרקים"],["shed","shed","השלה"],["behavior","heart","התנהגות"],["note","note","הערה"]]
       .map(([t,i,l])=>'<button class="qbtn" data-act="sheet" data-type="'+t+'" data-id="'+esc(d.id)+'">'+ico(i)+'<span>'+l+'</span></button>').join("")+'</div></section>';
+  h += timelineHTML(d);
   h += '<section class="sec"><div class="sec-h"><h2>גרף משקל</h2><span class="hint">גרם</span></div><div class="card chart">'+weightChart(d.id)+'</div></section>';
   const L = dLogs(d.id).slice(0,40);
   h += '<section class="sec"><div class="sec-h"><h2>היסטוריה</h2><span class="hint">'+L.length+' אחרונות</span></div><div class="card list">'+(L.length? L.map(logRow).join("") : '<div class="empty small">עוד לא נרשם כלום. התחל משקילה.</div>')+'</div></section>';
   h += '<section class="sec"><div class="row wrap"><button class="btn" data-act="vetSummary">'+'סיכום לווטרינר'+'</button><button class="btn" data-act="backup">גיבוי</button><button class="btn" data-act="restore">שחזור מגיבוי</button></div></section>';
   return h;
+}
+/* ---------------- photo timeline ---------------- */
+let tlSigning=false;
+async function signPhotos(paths){
+  const need=paths.filter(p=>p && !photoUrls[p]); if(!need.length || tlSigning) return;
+  tlSigning=true;
+  try{ const {data}=await sb.storage.from("photos").createSignedUrls(need.slice(0,100), 86400); (data||[]).forEach(x=>{ if(x.signedUrl) photoUrls[x.path]=x.signedUrl; }); }catch(e){}
+  tlSigning=false; render();
+}
+function weightNear(id, date){ const w=weights(id); let best=null; w.forEach(x=>{ const dd=Math.abs(parseD(x.date)-parseD(date))/864e5; if(dd<=7 && (!best || dd<best.dd)) best={g:x.g, dd}; }); return best; }
+function timelineHTML(d){
+  const list=(S.photos||[]).filter(p=>p.dragon_id===d.id);
+  const missing=list.map(p=>p.path).filter(p=>!photoUrls[p]); if(missing.length && !tlSigning) setTimeout(()=>signPhotos(missing),0);
+  let h='<section class="sec"><div class="sec-h"><h2>ציר תמונות</h2><label class="btn sm" for="tl_'+esc(d.id)+'">+ תמונה</label><input hidden id="tl_'+esc(d.id)+'" type="file" accept="image/*" data-tl="'+esc(d.id)+'"></div>';
+  if(!list.length) return h+'<div class="card small muted">תמונה אחת בחודש, מאותה זווית, מראה גדילה, צבע ומצב גוף טוב יותר מכל מספר.</div></section>';
+  h+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">'+list.slice(0,30).map(p=>{ const w=weightNear(d.id,p.taken); const u=photoUrls[p.path];
+    return '<button class="card" data-act="tlOpen" data-id="'+esc(p.id)+'" style="padding:0;overflow:hidden;display:flex;flex-direction:column;text-align:start"><div style="aspect-ratio:1;background:var(--line)">'+(u?'<img src="'+esc(u)+'" alt="'+esc(heDate(p.taken))+'" loading="lazy" style="width:100%;height:100%;object-fit:cover">':'')+'</div><div class="small" style="padding:4px 6px">'+esc(heDate(p.taken))+(w?' · '+w.g+' ג׳':'')+'</div></button>'; }).join("")+'</div>';
+  return h+'</section>';
+}
+function tlSheet(id){
+  const p=(S.photos||[]).find(x=>x.id===id); if(!p) return; const d=dragonById(p.dragon_id); const u=photoUrls[p.path]; const w=weightNear(p.dragon_id,p.taken);
+  openSheet(sheetHead((d?d.name+" · ":"")+heDate(p.taken))+(u?'<img src="'+esc(u)+'" alt="" style="width:100%;border-radius:12px">':'')+
+    '<div class="small">'+(d&&d.hatch&&monthsOld(d.hatch)!==null?'בגיל בערך '+Math.max(0,monthsOld(d.hatch)-Math.round((parseD(today())-parseD(p.taken))/(30.4*864e5)))+' חודשים':'')+(w?' · '+w.g+' ג׳ בשקילה הקרובה':'')+'</div>'+(p.note?'<div class="small">'+esc(p.note)+'</div>':'')+
+    '<button class="btn ghost danger" data-act="tlDel" data-id="'+esc(p.id)+'">'+(S.confirmDel===p.id?"למחוק את התמונה?":"מחיקה")+'</button>');
+}
+async function compressImage(f){
+  try{
+    const bmp = await createImageBitmap(f, {imageOrientation:"from-image"});
+    const sc = Math.min(1, 1600/Math.max(bmp.width,bmp.height));
+    const c=document.createElement("canvas"); c.width=Math.round(bmp.width*sc); c.height=Math.round(bmp.height*sc);
+    c.getContext("2d").drawImage(bmp,0,0,c.width,c.height); bmp.close&&bmp.close();
+    const b = await new Promise(res=>c.toBlob(res,"image/jpeg",0.82));
+    return b && b.size < f.size ? b : f;
+  }catch(e){ return f; }
+}
+async function uploadTimeline(did, f){
+  if(!/^image\//.test(f.type||"image/")){ toast("צריך קובץ תמונה"); return; }
+  if(f.size > 20*1024*1024){ toast("התמונה גדולה מדי (עד 20MB)"); return; }
+  toast("מעלה תמונה…");
+  const blob = await compressImage(f);
+  const path = S.hh+"/tl/"+did+"-"+Date.now()+".jpg";
+  const up = await sb.storage.from("photos").upload(path, blob, {contentType: blob.type||"image/jpeg"});
+  if(up.error){ toast("ההעלאה נכשלה"); return; }
+  const {data,error} = await sb.from("dragon_photos").insert({household_id:S.hh, dragon_id:did, path, taken:today()}).select("id,dragon_id,path,taken,note").single();
+  if(error){ sb.storage.from("photos").remove([path]); fail(error); return; }
+  const su = await sb.storage.from("photos").createSignedUrl(path, 86400); if(su.data) photoUrls[path]=su.data.signedUrl;
+  S.photos=[data].concat(S.photos||[]); render(); toast("התמונה נשמרה");
 }
 function logLabel(e){
   const ul = {white:"לבן", yellow:"צהוב", orange:"כתום", green:"ירוק"};
@@ -754,6 +804,65 @@ function agePlanHTML(){
   if(fem.length) h += '<div class="callout watch small" style="margin-top:8px"><b>'+esc(fem.map(d=>d.name).join(" ו"))+': הטלת ביצים.</b> נקבה מתבגרת יכולה להטיל ביצים לא מופרות גם בלי זכר. סימנים: חפירה וסיבובים עצבניים, בטן מלאה, ירידה בתיאבון, עצבנות. קופסת הטלה: כ־15 ס״מ חול לח שמחזיק צורה, עם חום מעליה. בזמן הריון: 4–5 חרקים פעמיים בשבוע ומולטי פעמיים בשבוע. אחרי ההטלה: 3 ימים חרקים וסלט עם סידן כל יום, אמבטיה פושרת ובאסקינג. בטן מלאה עם חולשה וחוסר תיאבון בלי הטלה, או ניסיונות כושלים: ווטרינר מיד. '+srcLink("rfEgg","ReptiFiles: הטלה")+'</div>';
   return h+'</section>';
 }
+/* ---------------- supplement powders ---------------- */
+const POW_KINDS=[["ca","סידן"],["d3","סידן עם D3"],["multi","מולטי־ויטמין"]];
+const POW_OPEN_MONTHS=6; // app's conservative rule; label stays specific to this app
+async function savePowders(){ render(); const {error}=await sb.from("household_settings").update({powders:S.config.powders||[], updated_at:new Date().toISOString()}).eq("household_id",S.hh); if(error) fail(error); }
+function powderAlerts(){
+  const A=[]; (S.config.powders||[]).forEach(p=>{
+    const nm=p.name||(POW_KINDS.find(k=>k[0]===p.kind)||[,"אבקה"])[1];
+    if(p.exp && /^\d{4}-\d{2}-\d{2}$/.test(p.exp) && daysSince(p.exp)>=0) A.push(["act", nm+": פג תוקף", "התוקף על האריזה עבר ב־"+heDate(p.exp)+". להחליף."]);
+    else if(p.opened && /^\d{4}-\d{2}-\d{2}$/.test(p.opened) && daysSince(p.opened)/30.4>=POW_OPEN_MONTHS) A.push(["watch", nm+": פתוחה "+Math.floor(daysSince(p.opened)/30.4)+" חודשים", "כדאי להחליף. ויטמינים נחלשים עם הזמן אחרי פתיחה, במיוחד בחום ובלחות."]);
+    else if(p.exp && /^\d{4}-\d{2}-\d{2}$/.test(p.exp) && daysSince(p.exp)>=-30) A.push(["info", nm+": התוקף נגמר בקרוב", "עד "+heDate(p.exp)+"."]);
+  }); return A;
+}
+function powdersHTML(){
+  const L=S.config.powders||[];
+  return '<div class="field"><label>אבקות פתוחות</label>'+(L.length?'<div class="list">'+L.map(p=>{ const nm=p.name||(POW_KINDS.find(k=>k[0]===p.kind)||[,"אבקה"])[1];
+    return '<div class="li"><div class="grow"><b>'+esc(nm)+'</b><span>'+(p.opened?"נפתחה "+esc(heDate(p.opened)):"")+(p.exp?" · תוקף "+esc(heDate(p.exp)):"")+'</span></div><button class="btn sm ghost" data-act="powEdit" data-id="'+esc(p.id)+'">עריכה</button></div>'; }).join("")+'</div>':'<div class="small muted">רושמים מתי נפתחה כל אבקה ומה התוקף, ומקבלים תזכורת להחליף.</div>')+
+    '<button class="btn sm" data-act="powAdd">+ אבקה</button></div>';
+}
+function powderSheet(id){
+  const p=(S.config.powders||[]).find(x=>x.id===id)||{id:null, kind:"ca", name:"", opened:today(), exp:""};
+  sheetState={type:"powder", id:p.id, kind:p.kind};
+  openSheet(sheetHead(p.id?"עריכת אבקה":"אבקה חדשה")+optsHTML("powKind",POW_KINDS,p.kind)+
+    '<div class="field"><label for="powName">שם (לא חובה)</label><input id="powName" maxlength="40" value="'+esc(p.name||"")+'" placeholder="למשל Repashy"></div>'+
+    '<div class="fgrid2"><div class="field"><label for="powOpen">נפתחה</label><input id="powOpen" type="date" value="'+esc(p.opened||"")+'"></div><div class="field"><label for="powExp">תוקף על האריזה</label><input id="powExp" type="date" value="'+esc(p.exp||"")+'"></div></div>'+
+    '<button class="btn pri" data-act="powSave">שמירה</button>'+(p.id?'<button class="btn ghost danger" data-act="powDel" data-id="'+esc(p.id)+'">מחיקה</button>':''));
+}
+async function savePowderFromSheet(){
+  const ok=v=>/^\d{4}-\d{2}-\d{2}$/.test(v)?v:"";
+  const st=sheetState; const p={id:st.id||uid(), kind:POW_KINDS.some(k=>k[0]===(st.powKind||st.kind))?(st.powKind||st.kind):"ca", name:($("#powName").value||"").trim().slice(0,40), opened:ok($("#powOpen").value), exp:ok($("#powExp").value)};
+  const L=(S.config.powders||[]).filter(x=>x.id!==p.id); L.push(p); S.config.powders=L.slice(-20);
+  closeSheet(); await savePowders(); settingsSheet();
+}
+
+/* ---------------- vacation / sitter ---------------- */
+function sitterText(){
+  const lines=["הוראות לשמירה על החרדונים",""];
+  const ov=S.config.vet||{};
+  S.dragons.forEach(d=>{ const st=stageOf(d)||"juv", g=STAGES[st];
+    lines.push("• "+d.name+" ("+g.n+")");
+    lines.push("  חרקים: "+(st==="adult"?"בימים "+insectDays().map(i=>DAYS[i]).join(", ")+". "+g.ins:g.ins));
+    lines.push("  סלט: "+g.veg);
+  });
+  lines.push("", "אבקה: סידן על החרקים והסלט בכל הגשה."+(multiDays().length?" מולטי־ויטמין בימי "+multiDays().map(i=>DAYS[i]).join(", ")+".":""));
+  lines.push("סלט בבוקר מהקופסה במקרר, חרקים אחר הצהריים בקערה עמוקה. להוציא שאריות סלט וחרקים שלא נאכלו.");
+  lines.push("אור וחום: לא לגעת בטיימרים ובטרמוסטט. לא להדליק נורה אדומה בלילה.");
+  lines.push("מים: ריסוס קל בבוקר, על החרדון ולא על כל הטרריום.");
+  lines.push("", "מתי להתקשר אליי מיד: מפסיק לאכול גם סלט, רדום ולא מגיב, נפיחות, דימום, קשיי נשימה, עור תקוע שמשחיר, נורה שנשרפה.");
+  if(ov.name||ov.phone) lines.push("ווטרינר: "+(ov.name||"")+(ov.phone?" "+ov.phone:""));
+  lines.push("", "אפשר לרשום הכול באפליקציה פוגונה: https://meirbal.github.io/pogona/");
+  return lines.join("\n");
+}
+function sitterSheet(){
+  openSheet(sheetHead("מצב חופשה")+'<div class="small">דף הוראות קצר למי ששומר על החרדונים, לפי הגיל וההגדרות שלכם. אפשר לשלוח בווטסאפ.</div>'+
+    '<pre class="card small" style="white-space:pre-wrap;font-family:inherit;margin:0;max-height:45vh;overflow:auto">'+esc(sitterText())+'</pre>'+
+    '<button class="btn pri" data-act="sitterShare">שליחה או העתקה</button>'+
+    '<div class="small muted">רוצים שהמטפל גם ירשום ארוחות באפליקציה? הזמינו אותו כבן בית ב"בני הבית", והסירו אותו כשאתם חוזרים.</div>'+
+    '<button class="btn" data-act="invite">הזמנת המטפל לאפליקציה</button>');
+}
+
 /* ---------------- dubia colony ---------------- */
 const COL_PER_FEMALE_MONTH = 15; // conservative rough estimate at warm temps
 function colonyNeedWeek(){ // rough insects/week from the age plan
@@ -1059,8 +1168,8 @@ function settingsSheet(){
     '<h3>חרדונים</h3>'+dr+'<button class="btn" data-act="addDragon">+ חרדון</button>'+
     '<h3>נורות</h3>'+(bl||'<div class="small muted">עוד לא נרשמו נורות.</div>')+'<button class="btn" data-act="addBulb">+ נורה</button>'+
     '<h3>האכלה ותוספים</h3><div class="card" style="display:flex;flex-direction:column;gap:10px"><div class="field"><label>ימי חרקים לחרדונים מגיל שנה</label><div class="opts">'+DAYS.map((d,i)=>'<button data-act="insDayT" data-v="'+i+'" aria-pressed="'+insectDays().includes(i)+'">'+d+'</button>').join("")+'</div><div class="note">לפי ReptiFiles: בוגר מקבל חרקים פעמיים בשבוע. מתחת לגיל שנה (או בלי גיל רשום) חרקים כל יום, בלי קשר לימים האלה. ההתראות בטלפון מתעדכנות בהתאם.</div></div><div class="field"><label>ימי מולטי־ויטמין (על הסלט, בנוסף לסידן)</label><div class="opts">'+DAYS.map((d,i)=>'<button data-act="multiDayT" data-v="'+i+'" aria-pressed="'+multiDays().includes(i)+'">'+d+'</button>').join("")+'</div><div class="note">לפי ReptiFiles: פעמיים בשבוע עד גיל שנה ולנקבה מעוברת, פעם בשבוע לבוגר.</div></div><div class="field"><label>יום דילוג (לא חובה)</label>'+optsHTML("plainDay",DAYS.map((d,i)=>[i,d]).concat([[-1,"אין"]]),p.plainDay)+'</div>'+
-    '<button class="btn sm" data-act="d3" aria-pressed="'+!!p.d3+'">'+(p.d3?"סידן עם D3 ✓":"סידן בלי D3")+'</button><div class="note">ההנחה: יש נורת UVB תקינה. במצב כזה הרבה מגדלים מוותרים על D3. אחרים נותנים D3 פעם־פעמיים בשבוע. זה נושא שנוי במחלוקת, אפשר לשאול את הווטרינר.</div></div>'+
-    householdHTML()+pushHTML()+
+    powdersHTML()+'<button class="btn sm" data-act="d3" aria-pressed="'+!!p.d3+'">'+(p.d3?"סידן עם D3 ✓":"סידן בלי D3")+'</button><div class="note">ההנחה: יש נורת UVB תקינה. במצב כזה הרבה מגדלים מוותרים על D3. אחרים נותנים D3 פעם־פעמיים בשבוע. זה נושא שנוי במחלוקת, אפשר לשאול את הווטרינר.</div></div>'+
+    householdHTML()+'<h3>חופשה</h3><div class="card row" style="justify-content:space-between"><span class="small">דף הוראות למי ששומר על החרדונים</span><button class="btn sm" data-act="sitter">פתיחה</button></div>'+pushHTML()+
     '<h3>מיקום למזג אוויר</h3><div class="card row" style="justify-content:space-between"><span class="small">'+esc((S.config.location||{}).name||"לא נבחר")+'</span><button class="btn sm" data-act="wxSetup">'+((S.config.location||{}).lat?"שינוי":"בחירת עיר")+'</button></div>'+
     '<h3>חשבון</h3><div class="card row" style="justify-content:space-between"><span class="small muted" dir="ltr">'+esc(user&&user.email||"")+'</span><button class="btn sm danger" data-act="logout">יציאה</button></div>');
 }
@@ -1224,6 +1333,17 @@ document.addEventListener("click", async ev=>{
   switch(a){
     case "closeSheet": closeSheet(); break;
     case "settings": settingsSheet(); break;
+    case "tlOpen": S.confirmDel=null; tlSheet(id); break;
+    case "tlDel": { const p=(S.photos||[]).find(x=>x.id===id); if(!p) break; if(S.confirmDel!==id){ S.confirmDel=id; tlSheet(id); break; } S.confirmDel=null; closeSheet();
+      const {error}=await sb.from("dragon_photos").delete().eq("id",id); if(error){ fail(error); break; }
+      sb.storage.from("photos").remove([p.path]); S.photos=S.photos.filter(x=>x.id!==id); render(); toast("נמחקה"); break; }
+    case "powAdd": powderSheet(null); break;
+    case "powEdit": powderSheet(id); break;
+    case "powSave": await savePowderFromSheet(); break;
+    case "powDel": { S.config.powders=(S.config.powders||[]).filter(x=>x.id!==id); closeSheet(); await savePowders(); settingsSheet(); break; }
+    case "sitter": sitterSheet(); break;
+    case "sitterShare": { const txt=sitterText(); try{ if(navigator.share){ await navigator.share({title:"הוראות לחרדונים", text:txt}); break; } }catch(e){ if(e && e.name==="AbortError") break; }
+      try{ await navigator.clipboard.writeText(txt); toast("הועתק"); }catch(e){ toast("לא הצלחתי להעתיק"); } break; }
     case "colOn": await colPatch({on:true, started:today(), food:null, water:null, clean:null}); colonySheet(); break;
     case "colEdit": colonySheet(); break;
     case "colSave": { const n=v=>{ const x=Math.floor(Number(v)); return Number.isFinite(x)&&x>=0&&x<=100000 ? x : 0; }; const patch={f:n($("#colF").value), m:n($("#colM").value)}; closeSheet(); await colPatch(patch); toast("נשמר"); break; }
@@ -1296,6 +1416,8 @@ function refreshCalc(){ // keep focus: re-render only result parts
 const refreshTemp = refreshCalc;
 document.addEventListener("change", async ev=>{
   if(ev.target.id==="rsFile" && ev.target.files[0]){ $("#rs").value = await ev.target.files[0].text(); return; }
+  const tl = ev.target.dataset && ev.target.dataset.tl;
+  if(tl && ev.target.files && ev.target.files[0]){ const f=ev.target.files[0]; ev.target.value=""; await uploadTimeline(tl, f); return; }
   const pid = ev.target.dataset && ev.target.dataset.photo; if(!pid) return;
   const f = ev.target.files && ev.target.files[0]; if(!f) return;
   if(f.size > 10*1024*1024){ toast("התמונה גדולה מדי (עד 10MB)"); return; }
