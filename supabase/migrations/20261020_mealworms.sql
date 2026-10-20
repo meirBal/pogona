@@ -1,0 +1,2 @@
+-- mealworm sub-colony (applied: colony_kind_patch_rpc, colony_kind_patch_rpc_fix)
+-- colony_kind_patch(hh, kind in ('meal'), patch): merges patch into household_settings.colony->kind

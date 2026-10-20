@@ -72,6 +72,12 @@ async function remindersFor(hh: string, now: Date): Promise<Msg[] | null> {
       const need = [["food", "אוכל יבש"], ["water", "ג׳ל מים או ירק"]].filter(([k]) => { const ymd = (x: unknown) => typeof x === "string" && /^\d{4}-\d{2}-\d{2}$/.test(x) ? x : null; const v = ymd(col[k]) || ymd(col.started); return !!v && daysBetween(v, L.day) >= 3; }).map(([, l]) => l);
       if (need.length) out.push({ kind: "colony", pref: "colony", title: "המושבה מחכה", body: `לדוביה: ${need.join(" ו")}. ירק שלא נאכל להוציא לפני שמעפיש.` });
     }
+    const meal = (col.meal || {}) as Record<string, unknown>;
+    if (meal.on) {
+      const ymd = (x: unknown) => typeof x === "string" && /^\d{4}-\d{2}-\d{2}$/.test(x) ? x : null;
+      const v = ymd(meal.carrot) || ymd(meal.started);
+      if (v && daysBetween(v, L.day) >= 4) out.push({ kind: "colony_meal", pref: "colony", title: "תולעי הקמח צריכות לחות", body: "פרוסת גזר או תפוח אדמה חדשה, ולהוציא את הישנה לפני שמעפישה." });
+    }
     for (const b of bu.data || []) {
       if (!b.installed) continue;
       const months = daysBetween(b.installed, L.day) / 30.4;
