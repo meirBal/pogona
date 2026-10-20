@@ -1002,9 +1002,9 @@ function mealHTML(){
   const st=mealStatus(), trays=(Array.isArray(c.trays)?c.trays:[]).filter(t=>t&&isYmd(t.d));
   let h='<div class="sec-h" style="margin-top:14px"><h2>תולעי קמח</h2><button class="btn sm ghost" data-act="mealEdit">עריכה</button></div><div class="card" style="display:flex;flex-direction:column;gap:10px">';
   h+='<div class="row" style="justify-content:space-around;text-align:center"><div><div class="big num">'+(Number(c.beetles)||0)+'</div><div class="small muted">חיפושיות</div></div><div><div class="big num">'+trays.length+'</div><div class="small muted">מגשים</div></div></div>';
-  h+='<div class="row wrap" style="gap:6px">'+st.map(x=>'<span class="chip '+x.lvl+'">'+esc(x.l)+': '+(x.ds===null?"לא נרשם":x.ds===0?"היום":"לפני "+x.ds+" ימים")+(isYmd(c[x.k])?"":" (מאז ההפעלה)")+'</span>').join("")+'</div>';
+  h+='<div class="row wrap" style="gap:6px">'+st.map(x=>'<span class="chip '+x.lvl+'">'+esc(x.l)+': '+(x.ds===null?"לא נרשם":x.ds===0?"היום":"לפני "+x.ds+" ימים")+(isYmd(c[x.k])||x.ds===null?"":" (מאז ההפעלה)")+'</span>').join("")+'</div>';
   h+='<div class="row wrap"><button class="btn sm pri" data-act="mealMark" data-k="carrot">גזר חדש</button><button class="btn sm" data-act="mealMark" data-k="bran">החלפתי מצע</button><button class="btn sm" data-act="mealMove">חיפושיות למגש חדש</button></div>';
-  if(trays.length) h+='<div class="list">'+trays.slice().reverse().map(t=>{ const w=Math.floor(daysSince(t.d)/7); const ready=w>=MEAL_READY_WEEKS[0];
+  if(trays.length) h+='<div class="list">'+trays.slice().reverse().map(t=>{ const w=Math.max(0,Math.floor(daysSince(t.d)/7)); const ready=w>=MEAL_READY_WEEKS[0];
     return '<div class="li"><div class="grow"><b>מגש מ־'+esc(heDate(t.d))+'</b><span>'+w+' שבועות · '+(ready?'בערך בגודל האכלה, לבדוק':'מוכן בערך בעוד '+Math.max(1,MEAL_READY_WEEKS[0]-w)+'–'+Math.max(1,MEAL_READY_WEEKS[1]-w)+' שבועות')+'</span></div><button class="btn sm ghost" data-act="mealTrayDel" data-d="'+esc(t.d)+'">נגמר</button></div>'; }).join("")+'</div>';
   else h+='<div class="small muted">כשמעבירים את החיפושיות למגש חדש, נפתח כאן מגש עם תאריך, ורואים מתי הוא בערך מוכן.</div>';
   h+='</div><details class="card small" style="margin-top:8px"><summary style="cursor:pointer;min-height:32px"><b>מדריך: איך מגדלים תולעי קמח</b></summary><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">'+
@@ -1472,12 +1472,12 @@ document.addEventListener("click", async ev=>{
       try{ await navigator.clipboard.writeText(txt); toast("הועתק"); }catch(e){ toast("לא הצלחתי להעתיק"); } break; }
     case "colOn": await colPatch({on:true, started:today(), food:null, water:null, clean:null}); colonySheet(); break;
     case "colEdit": colonySheet(); break;
-    case "mealOn": await mealPatch({on:true, started:today(), carrot:null, bran:null, move:null}); mealSheet(); break;
+    case "mealOn": await mealPatch({on:true, started:today(), carrot:null, bran:null, move:null, trays:[]}); mealSheet(); break;
     case "mealEdit": mealSheet(); break;
     case "mealSave": { const x=Math.floor(Number($("#mealB").value)); const v=Number.isFinite(x)&&x>=0&&x<=100000?x:0; closeSheet(); await mealPatch({beetles:v}); toast("נשמר"); break; }
     case "mealOff": closeSheet(); await mealPatch({on:false}); break;
     case "mealMark": { const k=el.dataset.k; if(!["carrot","bran"].includes(k)) break; await mealPatch({[k]:today()}); toast("נרשם"); break; }
-    case "mealMove": { const c=(S.config.colony||{}).meal||{}; const T=(Array.isArray(c.trays)?c.trays:[]).filter(t=>t&&isYmd(t.d)&&t.d!==today()); T.push({d:today()}); await mealPatch({move:today(), trays:T.slice(-8)}); toast("נפתח מגש חדש"); break; }
+    case "mealMove": { const c=(S.config.colony||{}).meal||{}; const T=(Array.isArray(c.trays)?c.trays:[]).filter(t=>t&&isYmd(t.d)&&t.d!==today()); T.push({d:today()}); await mealPatch({move:today(), trays:T.slice(-16)}); toast("נפתח מגש חדש"); break; }
     case "mealTrayDel": { const c=(S.config.colony||{}).meal||{}; const d=el.dataset.d; await mealPatch({trays:(Array.isArray(c.trays)?c.trays:[]).filter(t=>t&&t.d!==d)}); break; }
     case "colSave": { const n=v=>{ const x=Math.floor(Number(v)); return Number.isFinite(x)&&x>=0&&x<=100000 ? x : 0; }; const patch={f:n($("#colF").value), m:n($("#colM").value)}; closeSheet(); await colPatch(patch); toast("נשמר"); break; }
     case "colOff": closeSheet(); await colPatch({on:false}); break;
