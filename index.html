@@ -967,7 +967,7 @@ function colonyHTML(){
   h+='<div class="row wrap"><button class="btn sm pri" data-act="colMark" data-k="food">האכלתי</button><button class="btn sm" data-act="colMark" data-k="water">ג׳ל / ירק</button><button class="btn sm" data-act="colMark" data-k="clean">ניקיתי</button></div>';
   const ratioWarn = m && f && f/m < 3 ? '<div class="small" style="color:var(--watch)">יחס של פחות מ־3 נקבות לזכר. זכרים עודפים אפשר להאכיל לחרדונים.</div>' : '';
   if(need) h+= ratioWarn + '<div class="small">'+(f>=femNeed ? 'בקירוב, '+f+' נקבות אמורות לכסות את הצריכה (~'+month+' בחודש), אם המושבה חמה מספיק.' : 'בקירוב צריך <b>'+femNeed+' נקבות בוגרות</b> כדי לכסות ~'+month+' חרקים בחודש. עד אז משלימים מקנייה.')+'</div>';
-  h+='</div><details class="card small" style="margin-top:8px"><summary style="cursor:pointer;min-height:32px"><b>איך מחזיקים מושבה</b></summary><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">'+
+  h+='</div><details class="card small" style="margin-top:8px"><summary style="cursor:pointer;min-height:32px"><b>מדריך: איך מגדלים דוביה</b></summary><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">'+
     '<div><b>קופסה:</b> קופסת פלסטיק עם קירות חלקים (על קיר מחוספס דוביה מטפסים, על פלסטיק חלק לא), בנפח 40 ליטר לפחות, חורי אוורור עם רשת ותבניות ביצים מקרטון.</div>'+
     '<div><b>חום ולחות:</b> לרבייה צריך 32–35° ולחות של בערך 60%. בטמפרטורת חדר הרבייה איטית מאוד. משטח חימום מתחת לחלק מהקופסה, על טרמוסטט.</div>'+
     '<div><b>אוכל ומים:</b> מזון יבש (דגנים או מזון ייעודי) כל הזמן. מים רק כג׳ל או גבישי מים בצלוחית רדודה, בנפרד מהיבש, כי בקערת מים הם טובעים. ירק ופרי בתוספת, ומוציאים לפני שמעפיש: עובש עלול להרוג את המושבה.</div>'+
@@ -982,6 +982,50 @@ function colonySheet(){
   openSheet(sheetHead("מושבת דוביה")+'<div class="fgrid2"><div class="field"><label>נקבות בוגרות</label><input id="colF" type="number" min="0" inputmode="numeric" value="'+esc(c.f||"")+'"></div><div class="field"><label>זכרים בוגרים</label><input id="colM" type="number" min="0" inputmode="numeric" value="'+esc(c.m||"")+'"></div></div>'+
     '<button class="btn pri" data-act="colSave">שמירה</button><button class="btn ghost danger" data-act="colOff">הפסקת מעקב מושבה</button>');
 }
+/* ---------------- mealworm colony (colony.meal) ---------------- */
+async function mealPatch(patch){
+  const c=S.config.colony||{}; S.config.colony=Object.assign({}, c, {meal:Object.assign({}, c.meal||{}, patch)}); render();
+  const {data,error}=await sb.rpc("colony_kind_patch", {hh:S.hh, kind:"meal", patch});
+  if(error){ fail(error); return; }
+  if(data && typeof data==="object"){ S.config.colony=data; render(); }
+}
+const MEAL_READY_WEEKS=[10,14]; // rough: eggs ~1-2 wk + larvae ~2-3 months at 25-28°
+function mealStatus(){
+  const c=(S.config.colony||{}).meal||{}; if(!c.on) return [];
+  const it=[["carrot","גזר / לחות",3,5],["bran","מצע (סובין)",30,45]];
+  if((Number(c.beetles)||0)>0) it.push(["move","העברת חיפושיות",14,21]);
+  return it.map(([k,l,lim,lim2])=>{ const base=isYmd(c[k])?c[k]:isYmd(c.started)?c.started:null; const ds=base?Math.max(0,daysSince(base)):null; return {k,l,ds,lvl: ds===null?"watch":ds>=lim2?"act":ds>=lim?"watch":"ok"}; });
+}
+function mealHTML(){
+  const c=(S.config.colony||{}).meal||{};
+  if(!c.on) return '<div class="card row" style="gap:12px;margin-top:8px"><span class="ic" style="width:34px;height:34px;display:grid;place-items:center">'+ico("bug",'style="width:26px;height:26px;stroke:var(--accent)"')+'</span><div class="grow small"><b>תולעי קמח</b><br>מגדלים בבית? מעקב לחות ומצע, מגשים לפי תאריך, ומתי כל מגש מוכן.</div><button class="btn sm" data-act="mealOn">הפעלה</button></div>';
+  const st=mealStatus(), trays=(Array.isArray(c.trays)?c.trays:[]).filter(t=>t&&isYmd(t.d));
+  let h='<div class="sec-h" style="margin-top:14px"><h2>תולעי קמח</h2><button class="btn sm ghost" data-act="mealEdit">עריכה</button></div><div class="card" style="display:flex;flex-direction:column;gap:10px">';
+  h+='<div class="row" style="justify-content:space-around;text-align:center"><div><div class="big num">'+(Number(c.beetles)||0)+'</div><div class="small muted">חיפושיות</div></div><div><div class="big num">'+trays.length+'</div><div class="small muted">מגשים</div></div></div>';
+  h+='<div class="row wrap" style="gap:6px">'+st.map(x=>'<span class="chip '+x.lvl+'">'+esc(x.l)+': '+(x.ds===null?"לא נרשם":x.ds===0?"היום":"לפני "+x.ds+" ימים")+(isYmd(c[x.k])||x.ds===null?"":" (מאז ההפעלה)")+'</span>').join("")+'</div>';
+  h+='<div class="row wrap"><button class="btn sm pri" data-act="mealMark" data-k="carrot">גזר חדש</button><button class="btn sm" data-act="mealMark" data-k="bran">החלפתי מצע</button><button class="btn sm" data-act="mealMove">חיפושיות למגש חדש</button></div>';
+  if(trays.length) h+='<div class="list">'+trays.slice().reverse().map(t=>{ const w=Math.max(0,Math.floor(daysSince(t.d)/7)); const ready=w>=MEAL_READY_WEEKS[0];
+    return '<div class="li"><div class="grow"><b>מגש מ־'+esc(heDate(t.d))+'</b><span>'+w+' שבועות · '+(ready?'בערך בגודל האכלה, לבדוק':'מוכן בערך בעוד '+Math.max(1,MEAL_READY_WEEKS[0]-w)+'–'+Math.max(1,MEAL_READY_WEEKS[1]-w)+' שבועות')+'</span></div><button class="btn sm ghost" data-act="mealTrayDel" data-d="'+esc(t.d)+'">נגמר</button></div>'; }).join("")+'</div>';
+  else h+='<div class="small muted">כשמעבירים את החיפושיות למגש חדש, נפתח כאן מגש עם תאריך, ורואים מתי הוא בערך מוכן.</div>';
+  h+='</div><details class="card small" style="margin-top:8px"><summary style="cursor:pointer;min-height:32px"><b>מדריך: איך מגדלים תולעי קמח</b></summary><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">'+
+    '<div><b>מחזור החיים:</b> ביצה ← תולעת ← גולם (מקופל, כמעט לא זז) ← חיפושית, לבנה ורכה בהתחלה, ומשחירה בהדרגה תוך כמה ימים. החיפושיות מטילות ביצים במצע, והמחזור מתחיל מחדש.</div>'+
+    '<div><b>קופסאות:</b> שתיים מדורגות. בעליונה, עם רשת בתחתית, החיפושיות על כמה ס״מ סובין או קוואקר. הביצים דביקות ונדבקות לסובין ולדפנות, וחלק מהתולעים הקטנות נופלות לתחתונה. מה שבאמת מפריד בין הדורות הוא העברת החיפושיות למגש חדש. מכסה עם אוורור.</div>'+
+    '<div><b>לחות:</b> פרוסת גזר או תפוח אדמה, בלי קערת מים. מחליפים לפני שמעפיש, כי עובש ולחות עודפת מזיקים למושבה.</div>'+
+    '<div><b>חום:</b> בערך 25–28° (הגדילה הכי מהירה סביב 30°). בקור הכול מאט מאוד. מושבת רבייה לא שמים במקרר, רק תולעים שמחכות להאכלה.</div>'+
+    '<div><b>גולמים:</b> להוציא לקופסה נפרדת, כי התולעים נוטות לכרסם אותם.</div>'+
+    '<div><b>מגשים:</b> כל שבועיים בערך מעבירים את החיפושיות למגש חדש. כך כל מגש מכיל תולעים בגיל דומה.</div>'+
+    '<div><b>זמנים בערך:</b> ביצים בוקעות תוך 1–2 שבועות, תולעת מגיעה לגודל האכלה תוך 2–3 חודשים, וגולם הופך לחיפושית תוך שבוע־שבועיים (יותר בקור). מחזור מלא לוקח בערך 3–4 חודשים.</div>'+
+    '<div><b>ניקיון:</b> כשהמצע הופך בעיקר לאבקה דקה (לשלשת), מנפים ומחליפים.</div>'+
+    '<div><b>לחרדון:</b> תולעי קמח הן פינוק, לא בסיס, כי הן שמנות. מושבה קטנה מספיקה. לפני האכלה, יום־יומיים של ירק טוב לתולעים.</div><div><b>שמירה במקרר:</b> תולעים להאכלה (לא המושבה) אפשר לשמור בערך ב־7–10°. מתחת ל־4° הן עלולות למות. פעם בשבוע להוציא ליממה בטמפרטורת חדר עם גזר, ואז להחזיר. כך הן מחזיקות בערך 6–10 שבועות.</div>'+
+    '<div class="muted">הזמנים והמספרים הם קירוב, והם משתנים מאוד לפי חום. מקורות: <a class="src" href="https://www.bugburger.se/wp-content/uploads/2018/11/mealwormguide.pdf" target="_blank" rel="noopener">מדריך Bugburger ↗</a> · <a class="src" href="https://en.wikipedia.org/wiki/Mealworm" target="_blank" rel="noopener">ויקיפדיה ↗</a></div></div></details>';
+  return h;
+}
+function mealSheet(){
+  const c=(S.config.colony||{}).meal||{};
+  openSheet(sheetHead("תולעי קמח")+'<div class="field"><label for="mealB">כמה חיפושיות (בערך)</label><input id="mealB" type="number" min="0" inputmode="numeric" value="'+esc(c.beetles||"")+'"></div>'+
+    '<button class="btn pri" data-act="mealSave">שמירה</button><button class="btn ghost danger" data-act="mealOff">הפסקת מעקב תולעים</button>');
+}
+
 function viewFood(){
   const sp = S.config.salad.prepared; let fresh="";
   if(sp){ const age=daysSince(sp); const left=Math.max(0,4-age); const pct=Math.max(0,Math.min(100,left/4*100));
@@ -998,7 +1042,7 @@ function viewFood(){
   h += '<p class="note">רשימות הירקות לפי '+srcLink("rfFood","ReptiFiles: תזונה")+'. תרד ומנגולד לא רעילים, אבל קושרים סידן, ולכן רק מדי פעם.</p>';
   h += '<section class="sec"><div class="sec-h"><h2>חרקים</h2></div><div class="card small" style="display:flex;flex-direction:column;gap:6px">'+
     '<div><b>דוביה</b> כבסיס, בקערה עמוקה וחלקה (6–8 ס״מ) כדי שלא יברחו.</div><div><b>תולעי קמח</b> רק כפינוק. הן שמנות, ועודף שלהן מוביל להשמנה.</div><div><b>גודל:</b> לא רחב יותר מהמרווח בין העיניים של החרדון.</div><div><b>האכלת המושבה</b> בירקות יום־יומיים לפני, כדי שמה שהם אכלו יגיע לחרדון.</div><div><b>כמות:</b> לפי הגיל, בתוכנית למעלה. השקילה השבועית אומרת אם זה מספיק.</div><div>'+srcLink("rfFood")+' · '+srcLink("tufts")+'</div></div></section>';
-  h += colonyHTML();
+  h += '<section class="sec"><div class="sec-h"><h2>מושבות חרקים</h2><span class="hint">מדריך בתוך כל מושבה</span></div>'+colonyHTML().replace(/^<section class="sec">/,"").replace(/<\/section>$/,"")+mealHTML()+'</section>';
   return h;
 }
 
@@ -1340,7 +1384,7 @@ function pushHTML(){
   } else {
     const p=Object.assign({salad:true,insects:true,care:true,weather:true,colony:true}, pushState.row.prefs||{});
     const t=(k,l)=>'<button class="chk" data-act="pushPref" data-k="'+k+'" aria-pressed="'+(p[k]!==false)+'"><span class="bx">'+(p[k]!==false?ico("check",'style="width:16px;height:16px"'):"")+'</span><span>'+l+'</span></button>';
-    h+='<div class="small" style="color:var(--ok)">ההתראות פעילות במכשיר הזה.</div>'+t("salad","סלט בבוקר (06:00)")+t("insects","חרקים (17:00, ותזכורת ב־20:00 אם לא נרשם)")+t("care","שקילה, קופסת סלט, נורה (09:00)")+t("weather","מזג אוויר: לילה קר ושרב")+((S.config.colony||{}).on?t("colony","מושבת דוביה: אוכל ולחות (09:00)"):"")+
+    h+='<div class="small" style="color:var(--ok)">ההתראות פעילות במכשיר הזה.</div>'+t("salad","סלט בבוקר (06:00)")+t("insects","חרקים (17:00, ותזכורת ב־20:00 אם לא נרשם)")+t("care","שקילה, קופסת סלט, נורה (09:00)")+t("weather","מזג אוויר: לילה קר ושרב")+(((S.config.colony||{}).on||((S.config.colony||{}).meal||{}).on)?t("colony","מושבות: אוכל ולחות (09:00)"):"")+
       '<div class="row wrap"><button class="btn sm" data-act="pushTest">שליחת התראת בדיקה</button><button class="btn sm ghost danger" data-act="pushOff">כיבוי במכשיר הזה</button></div>';
   }
   return h+'</div>';
@@ -1428,6 +1472,13 @@ document.addEventListener("click", async ev=>{
       try{ await navigator.clipboard.writeText(txt); toast("הועתק"); }catch(e){ toast("לא הצלחתי להעתיק"); } break; }
     case "colOn": await colPatch({on:true, started:today(), food:null, water:null, clean:null}); colonySheet(); break;
     case "colEdit": colonySheet(); break;
+    case "mealOn": await mealPatch({on:true, started:today(), carrot:null, bran:null, move:null, trays:[]}); mealSheet(); break;
+    case "mealEdit": mealSheet(); break;
+    case "mealSave": { const x=Math.floor(Number($("#mealB").value)); const v=Number.isFinite(x)&&x>=0&&x<=100000?x:0; closeSheet(); await mealPatch({beetles:v}); toast("נשמר"); break; }
+    case "mealOff": closeSheet(); await mealPatch({on:false}); break;
+    case "mealMark": { const k=el.dataset.k; if(!["carrot","bran"].includes(k)) break; await mealPatch({[k]:today()}); toast("נרשם"); break; }
+    case "mealMove": { const c=(S.config.colony||{}).meal||{}; const T=(Array.isArray(c.trays)?c.trays:[]).filter(t=>t&&isYmd(t.d)&&t.d!==today()); T.push({d:today()}); await mealPatch({move:today(), trays:T.slice(-16)}); toast("נפתח מגש חדש"); break; }
+    case "mealTrayDel": { const c=(S.config.colony||{}).meal||{}; const d=el.dataset.d; await mealPatch({trays:(Array.isArray(c.trays)?c.trays:[]).filter(t=>t&&t.d!==d)}); break; }
     case "colSave": { const n=v=>{ const x=Math.floor(Number(v)); return Number.isFinite(x)&&x>=0&&x<=100000 ? x : 0; }; const patch={f:n($("#colF").value), m:n($("#colM").value)}; closeSheet(); await colPatch(patch); toast("נשמר"); break; }
     case "colOff": closeSheet(); await colPatch({on:false}); break;
     case "colMark": { const k=el.dataset.k; if(!["food","water","clean"].includes(k)) break; await colPatch({[k]:today()}); toast("נרשם"); break; }
