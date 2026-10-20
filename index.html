@@ -967,7 +967,7 @@ function colonyHTML(){
   h+='<div class="row wrap"><button class="btn sm pri" data-act="colMark" data-k="food">האכלתי</button><button class="btn sm" data-act="colMark" data-k="water">ג׳ל / ירק</button><button class="btn sm" data-act="colMark" data-k="clean">ניקיתי</button></div>';
   const ratioWarn = m && f && f/m < 3 ? '<div class="small" style="color:var(--watch)">יחס של פחות מ־3 נקבות לזכר. זכרים עודפים אפשר להאכיל לחרדונים.</div>' : '';
   if(need) h+= ratioWarn + '<div class="small">'+(f>=femNeed ? 'בקירוב, '+f+' נקבות אמורות לכסות את הצריכה (~'+month+' בחודש), אם המושבה חמה מספיק.' : 'בקירוב צריך <b>'+femNeed+' נקבות בוגרות</b> כדי לכסות ~'+month+' חרקים בחודש. עד אז משלימים מקנייה.')+'</div>';
-  h+='</div><details class="card small" style="margin-top:8px"><summary style="cursor:pointer;min-height:32px"><b>מדריך: איך מגדלים דוביה</b></summary><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">'+
+  h+='</div><details class="card small" style="margin-top:8px"><summary style="cursor:pointer;min-height:32px"><b>מדריך: איך מגדלים דוביה</b></summary><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">'+colonyFoodHTML("dubia")+
     '<div><b>קופסה:</b> קופסת פלסטיק עם קירות חלקים (על קיר מחוספס דוביה מטפסים, על פלסטיק חלק לא), בנפח 40 ליטר לפחות, חורי אוורור עם רשת ותבניות ביצים מקרטון.</div>'+
     '<div><b>חום ולחות:</b> לרבייה צריך 32–35° ולחות של בערך 60%. בטמפרטורת חדר הרבייה איטית מאוד. משטח חימום מתחת לחלק מהקופסה, על טרמוסטט.</div>'+
     '<div><b>אוכל ומים:</b> מזון יבש (דגנים או מזון ייעודי) כל הזמן. מים רק כג׳ל או גבישי מים בצלוחית רדודה, בנפרד מהיבש, כי בקערת מים הם טובעים. ירק ופרי בתוספת, ומוציאים לפני שמעפיש: עובש עלול להרוג את המושבה.</div>'+
@@ -982,6 +982,26 @@ function colonySheet(){
   openSheet(sheetHead("מושבת דוביה")+'<div class="fgrid2"><div class="field"><label>נקבות בוגרות</label><input id="colF" type="number" min="0" inputmode="numeric" value="'+esc(c.f||"")+'"></div><div class="field"><label>זכרים בוגרים</label><input id="colM" type="number" min="0" inputmode="numeric" value="'+esc(c.m||"")+'"></div></div>'+
     '<button class="btn pri" data-act="colSave">שמירה</button><button class="btn ghost danger" data-act="colOff">הפסקת מעקב מושבה</button>');
 }
+/* ---------------- what colonies may eat ---------------- */
+const COLONY_FOOD = {
+  dubia: [
+    ["ok","בסיס יבש (תמיד בקופסה)",["קוואקר / שיבולת שועל","סובין חיטה","מזון ייעודי לג׳וקים"]],
+    ["ok","לחות ותזונה (כמה פעמים בשבוע)",["גזר","בטטה","דלורית / דלעת","תפוח","קייל או עלי כרוב ירוק","ג׳ל מים / גבישי מים"]],
+    ["watch","רק מעט",["תפוז (מעודד רבייה, לא כבסיס)","לחם","תרד (קושר סידן)"]],
+    ["vet","לא לתת",["מזון יבש לכלבים או חתולים: עודף חלבון, קשור לגאוט אצל זוחלים","מזון דגים","אבוקדו, בצל ושום (עלולים להזיק לחרדון)","אוכל מעופש","אוכל מתובל, מלוח או שמנוני","ירק או פרי לא שטוף (חומרי ריסוס)","קערת מים פתוחה (טובעים)"]]
+  ],
+  meal: [
+    ["ok","מצע ומזון (הם חיים בתוכו)",["סובין חיטה","קוואקר / שיבולת שועל"]],
+    ["ok","לחות (פרוסה מעל המצע)",["גזר","תפוח אדמה","תפוח"]],
+    ["ok","ירק לתזונה, במנות קטנות",["קייל","עלי חסה רומית","עלי כרוב ירוק"]],
+    ["watch","רק מעט",["שמרי בירה (קורט)","תרד (קושר סידן)"]],
+    ["vet","לא לתת",["אדמה או מצע רטוב: עובש וקרדית","הרבה ירק רטוב בבת אחת","מזון דגים, כלבים או חתולים","אבוקדו, בצל ושום (עלולים להזיק לחרדון)","אוכל מעופש","אוכל מתובל, מלוח או שמנוני","ירק לא שטוף (חומרי ריסוס)","קערת מים"]]
+  ]
+};
+function colonyFoodHTML(kind){
+  return '<div style="display:flex;flex-direction:column;gap:8px;margin-top:4px"><b>מה מותר ומה אסור להאכיל</b>'+COLONY_FOOD[kind].map(([c,t,items])=>'<div><div class="small muted" style="margin-bottom:4px">'+esc(t)+'</div><div class="food '+c+'">'+items.map(x=>'<span>'+esc(x)+'</span>').join("")+'</div></div>').join("")+'<div class="small muted">מקורות: <a class="src" href="https://dubiaroaches.com/blogs/feeder-insect-care/what-do-dubia-roaches-eat" target="_blank" rel="noopener">DubiaRoaches ↗</a> · <a class="src" href="https://joshsfrogs.com/cms/increasing-feeder-bug-nutrition-gut-loading" target="_blank" rel="noopener">Josh\'s Frogs ↗</a></div></div>';
+}
+
 /* ---------------- mealworm colony (colony.meal) ---------------- */
 async function mealPatch(patch){
   const c=S.config.colony||{}; S.config.colony=Object.assign({}, c, {meal:Object.assign({}, c.meal||{}, patch)}); render();
@@ -1007,7 +1027,7 @@ function mealHTML(){
   if(trays.length) h+='<div class="list">'+trays.slice().reverse().map(t=>{ const w=Math.max(0,Math.floor(daysSince(t.d)/7)); const ready=w>=MEAL_READY_WEEKS[0];
     return '<div class="li"><div class="grow"><b>מגש מ־'+esc(heDate(t.d))+'</b><span>'+w+' שבועות · '+(ready?'בערך בגודל האכלה, לבדוק':'מוכן בערך בעוד '+Math.max(1,MEAL_READY_WEEKS[0]-w)+'–'+Math.max(1,MEAL_READY_WEEKS[1]-w)+' שבועות')+'</span></div><button class="btn sm ghost" data-act="mealTrayDel" data-d="'+esc(t.d)+'">נגמר</button></div>'; }).join("")+'</div>';
   else h+='<div class="small muted">כשמעבירים את החיפושיות למגש חדש, נפתח כאן מגש עם תאריך, ורואים מתי הוא בערך מוכן.</div>';
-  h+='</div><details class="card small" style="margin-top:8px"><summary style="cursor:pointer;min-height:32px"><b>מדריך: איך מגדלים תולעי קמח</b></summary><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">'+
+  h+='</div><details class="card small" style="margin-top:8px"><summary style="cursor:pointer;min-height:32px"><b>מדריך: איך מגדלים תולעי קמח</b></summary><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">'+colonyFoodHTML("meal")+
     '<div><b>מחזור החיים:</b> ביצה ← תולעת ← גולם (מקופל, כמעט לא זז) ← חיפושית, לבנה ורכה בהתחלה, ומשחירה בהדרגה תוך כמה ימים. החיפושיות מטילות ביצים במצע, והמחזור מתחיל מחדש.</div>'+
     '<div><b>קופסאות:</b> שתיים מדורגות. בעליונה, עם רשת בתחתית, החיפושיות על כמה ס״מ סובין או קוואקר. הביצים דביקות ונדבקות לסובין ולדפנות, וחלק מהתולעים הקטנות נופלות לתחתונה. מה שבאמת מפריד בין הדורות הוא העברת החיפושיות למגש חדש. מכסה עם אוורור.</div>'+
     '<div><b>לחות:</b> פרוסת גזר או תפוח אדמה, בלי קערת מים. מחליפים לפני שמעפיש, כי עובש ולחות עודפת מזיקים למושבה.</div>'+
