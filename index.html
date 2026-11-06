@@ -376,6 +376,10 @@ const SOURCES = {
   rfSub:{org:"ReptiFiles", t:"מצעים", u:"https://reptifiles.com/bearded-dragon/care-guide/bearded-dragon-substrate", d:"אילו מצעים מתאימים ואילו לא."},
   rfHealth:{org:"ReptiFiles", t:"בריאות ומחלות", u:"https://reptifiles.com/bearded-dragon/care-guide/bearded-dragon-health", d:"סימנים נפוצים לבעיות בריאות ומתי לפנות לווטרינר."},
   vca:{org:"VCA Animal Hospitals", t:"מחלות של חרדונים", u:"https://vcahospitals.com/know-your-pet/bearded-dragons-diseases", d:"רשת בתי חולים וטרינריים. מחלת עצמות (MBD), דלקות פה, טפילים, דלקות נשימה."},
+  rfHandle:{org:"ReptiFiles", t:"טיפול והחזקה ביד", u:"https://reptifiles.com/bearded-dragon-care/bearded-dragon-handling/", d:"איך להרים, להרגיל לידיים, וסימני לחץ."},
+  rfShed:{org:"ReptiFiles", t:"השלה", u:"https://reptifiles.com/bearded-dragon-care/bearded-dragon-shedding/", d:"מה תקין בהשלה ומתי עור תקוע הוא בעיה."},
+  rfBath:{org:"ReptiFiles", t:"אמבטיה", u:"https://reptifiles.com/bearded-dragon-care/bearded-dragon-bath/", d:"מתי אמבטיה עוזרת ואיך עושים אותה בבטחה."},
+  cdc:{org:"CDC", t:"זוחלים ובריאות", u:"https://www.cdc.gov/healthy-pets/about/reptiles-and-amphibians.html", d:"המרכז האמריקאי לבקרת מחלות: סלמונלה, שטיפת ידיים וילדים."},
   rvc:{org:"Royal Veterinary College", t:"דף טיפול בחרדונים", u:"https://www.rvc.ac.uk/Media/Default/small-animal/documents/Bearded-dragon-care%20-%20UPDATED.pdf", d:"דף מידע של בית הספר המלכותי לווטרינריה בלונדון."},
   tufts:{org:"Tufts Vet School", t:"מחקר על תזונה וכבד שומני", u:"https://vet.tufts.edu/news-events/news/feeding-and-caring-bearded-dragons", d:"מאמר מ־2022 של בית הספר לווטרינריה באוניברסיטת טאפטס, על מחקרים בנושא תזונה וכבד שומני אצל חרדונים."},
   uvg:{org:"UV Guide UK", t:"מדריך תאורת UV לזוחלים", u:"https://www.uvguideuk.com/", d:"מדידות אמיתיות של נורות UV, כולל נורות כספית. מקום טוב לבדוק נורה ספציפית."},
@@ -823,8 +827,63 @@ function weightChart(id){
     '<circle cx="'+X(x1)+'" cy="'+Y(last.g)+'" r="5" fill="var(--surface)" stroke="var(--accent)" stroke-width="2.5"/><text x="'+(X(x1)-8)+'" y="'+(Y(last.g)-9)+'" font-size="12" font-weight="700" text-anchor="end" fill="var(--ink)" font-family="Heebo">'+last.g+'</text>'+lbls+'</svg>';
 }
 
+/* ---------------- short visual guides (do / don't) ---------------- */
+// top-down handling map: green = OK to touch, red = avoid. Original drawing.
+function touchMapSVG(){
+  return '<svg viewBox="0 28 320 146" role="img" aria-label="מפת מגע: ירוק מותר, אדום להימנע" style="width:100%;height:auto">'+
+  '<path d="M60 100 C 110 92, 170 92, 205 100 C 170 108, 110 108, 60 100 Z" fill="none"/>'+
+  '<path d="M196 100 Q 250 98 312 106" stroke="var(--vet)" stroke-width="9" stroke-linecap="round" fill="none" opacity=".85"/>'+ // tail
+  '<g stroke="var(--vet)" stroke-width="7" stroke-linecap="round" opacity=".85" fill="none">'+
+  '<path d="M95 78 L 78 52 L 62 50"/><path d="M95 122 L 78 148 L 62 150"/><path d="M180 80 L 196 54 L 212 50"/><path d="M180 120 L 196 146 L 212 150"/></g>'+ // limbs
+  '<ellipse cx="140" cy="100" rx="62" ry="30" fill="var(--ok)" opacity=".9"/>'+ // back
+  '<ellipse cx="140" cy="100" rx="62" ry="30" fill="none" stroke="var(--ink)" stroke-width="2"/>'+
+  '<path d="M84 82 L 24 100 L 84 118 Z" fill="var(--surface2)" stroke="var(--ink)" stroke-width="2"/>'+ // head
+  '<circle cx="66" cy="100" r="8" fill="var(--vet)"/>'+ // top of head / parietal eye
+  '<circle cx="48" cy="93" r="2.8" fill="var(--ink)"/><circle cx="48" cy="107" r="2.8" fill="var(--ink)"/>'+
+  '<text x="140" y="104" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">גב: ליטוף עדין</text>'+
+  '<text x="268" y="94" text-anchor="middle" font-size="11" fill="var(--vet)">לא לתפוס זנב</text>'+
+  '<text x="60" y="136" text-anchor="middle" font-size="11" fill="var(--vet)">ראש: לא מלמעלה</text>'+
+  '<text x="205" y="40" text-anchor="middle" font-size="11" fill="var(--vet)">לא למשוך רגליים</text>'+
+  '</svg>';
+}
+const GUIDES = [
+  {id:"touch", t:"מגע והרמה", s:"איפה נוגעים, ואיך מרימים בלי להלחיץ", art:touchMapSVG,
+   ok:["לגשת מהצד ובגובה העיניים, לאט, כך שיראה את היד","להרים מלמטה: כף יד מתחת לחזה ולבטן, ולתמוך גם ברגליים האחוריות ובבסיס הזנב","ללטף את הגב בעדינות, בכיוון הקשקשים, מהראש לזנב","מפגשים קצרים, ורק אחרי שהוא התחמם","לשטוף ידיים אחרי כל מגע"],
+   no:["להרים או למשוך בזנב. חרדון לא משיל זנב, והזנב והחוליות יכולים להיפגע","ללחוץ על הבטן או למעוך בתפיסה","להגיע אליו ישר מלמעלה. משהו שיורד מעל הראש נראה לו כמו טורף","למשוך או לסובב רגליים","להמשיך כשהוא מראה סימני לחץ"],
+   src:["rfHandle","rvc"]},
+  {id:"stress", t:"סימני לחץ בזמן החזקה", s:"מתי לעצור ולהחזיר אותו", art:()=>dragonSVG({open:true, beard:"black", hiss:true, label:"סימני לחץ"}),
+   ok:["להחזיר אותו בעדינות למקום ולנסות מחר, במפגש קצר יותר","לבדוק שהוא לא קר. חרדון קר מתגונן יותר"],
+   no:["זקן שחור או מנופח","פה פתוח עם שריקה (פה פתוח בזמן באסקינג, בלי שריקה, הוא דרך רגילה להתקרר)","גוף משוטח ובריחה בכוח","פסים כהים על הבטן שמתחזקים","עיניים עצומות בזמן ליטוף, שלא תמיד אומרות שהוא רגוע. לפעמים זו התחמקות"],
+   noTitle:"סימנים לעצור", src:["rfHandle","vca"]},
+  {id:"shed", t:"השלה", s:"מה לעשות ומה לא, כשהעור מתקלף", art:()=>dragonSVG({dark:true, label:"השלה"}),
+   ok:["לתת לזה לקרות לבד. אצל צעירים זה קורה הרבה","אמבטיה פושרת קצרה או ריסוס קל יכולים לעזור","לבדוק אצבעות וקצה זנב. עור תקוע שם יכול לחנוק את זרימת הדם"],
+   no:["לקלף או למשוך עור שעוד לא השתחרר","להעלות את הלחות בטרריום לאורך זמן","להתעלם מאצבע או קצה זנב שמשחירים. זה מצב לווטרינר"],
+   src:["rfShed","vca"]},
+  {id:"bath", t:"אמבטיה", s:"מתי זה עוזר, ואיך עושים בטוח", art:()=>dragonSVG({eyes:"closed", label:"אמבטיה"}),
+   ok:["מים פושרים, נעימים למגע של פרק כף היד","גובה מים עד הכתפיים בערך, כך שהראש תמיד בחוץ ובקלות","10–15 דקות, ואז לייבש ולהחזיר לחום","שימושית בהשלה, בעצירות, או כשהוא נראה מיובש"],
+   no:["להשאיר לבד במים, אפילו לרגע","מים חמים או קרים","סבון או תוספים במים","לרחוץ בכיור המטבח או במקום של אוכל"],
+   src:["rfBath","cdc"]},
+  {id:"safety", t:"בטיחות בבית", s:"סלמונלה, ילדים, ומה מסוכן בבית", art:()=>dragonSVG({label:"בבית"}),
+   ok:["לשטוף ידיים עם סבון אחרי מגע, האכלה או ניקוי","לנקות את הציוד מחוץ למטבח","לפקח על ילדים, ולוודא שהם שוטפים ידיים"],
+   no:["לנשק או להצמיד לפנים","לתת לו להסתובב חופשי במטבח או ליד אוכל","לתת לו להסתובב בבית בלי השגחה (נפילות, חוטים, חיות אחרות, קור)","להאכיל בחרקים מהחצר. גחליליות רעילות במיוחד לחרדונים"],
+   src:["cdc","rfFood"]}
+];
+function guidesHTML(){
+  return '<section class="sec"><div class="sec-h"><h2>מדריכים קצרים</h2><span class="hint">מה כן, מה לא</span></div><div class="row wrap" style="gap:8px">'+
+    GUIDES.map(g=>'<button class="btn sm" data-act="guide" data-id="'+g.id+'">'+esc(g.t)+'</button>').join("")+'</div></section>';
+}
+function guideSheet(id){
+  const g=GUIDES.find(x=>x.id===id); if(!g) return;
+  const li=(arr,ic,color)=>'<ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px">'+arr.map(x=>'<li class="row" style="gap:8px;align-items:flex-start"><span style="color:var(--'+color+');font-weight:700;flex:none">'+ic+'</span><span>'+esc(x)+'</span></li>').join("")+'</ul>';
+  openSheet(sheetHead(g.t)+'<div class="small muted">'+esc(g.s)+'</div><div class="card" style="padding:8px">'+g.art()+'</div>'+
+    '<div class="card small" style="display:flex;flex-direction:column;gap:8px"><b style="color:var(--ok)">כן</b>'+li(g.ok,"✓","ok")+'</div>'+
+    '<div class="card small" style="display:flex;flex-direction:column;gap:8px"><b style="color:var(--vet)">'+esc(g.noTitle||"לא")+'</b>'+li(g.no,"✗","vet")+'</div>'+
+    '<p class="note">מקורות: '+g.src.map(k=>srcLink(k)).join(" · ")+'</p>');
+}
+
 function viewBeh(){
   let h = '<section class="sec"><div class="card row" style="gap:14px"><div class="grow"><h2>משהו מדאיג?</h2><div class="small muted">שלוש שאלות, ואז תשובה: לעקוב, לתקן סביבה, או ווטרינר.</div></div><button class="btn pri" data-act="triage">בדיקה מהירה</button></div><button class="btn" data-act="vets">ווטרינרים לזוחלים</button></section>';
+  h += guidesHTML();
   const F=[["all","הכול"],["ok","תקין"],["watch","לעקוב"],["act","לפעול"],["vet","ווטרינר"]];
   h += '<div class="seg" role="group" aria-label="סינון">'+F.map(([k,t])=>'<button data-act="behFilter" data-k="'+k+'" aria-pressed="'+(S.behFilter===k)+'">'+t+'</button>').join("")+'</div>';
   const list = BEHAVIORS.filter(b=>S.behFilter==="all"||b.st===S.behFilter);
@@ -1474,6 +1533,7 @@ document.addEventListener("click", async ev=>{
   switch(a){
     case "closeSheet": closeSheet(); break;
     case "settings": settingsSheet(); break;
+    case "guide": guideSheet(id); break;
     case "coverReset": { const old=S.config.cover; const {error}=await sb.from("household_settings").update({cover:null}).eq("household_id",S.hh); if(error){ fail(error); break; } S.config.cover=null; render(); if(old) sb.storage.from("photos").remove([old]); break; }
     case "avReset": { const d=Object.assign({},dragonById(id)); if(!d.id) break; const old=d.photo; d.photo=null; await saveDragon(d); if(old) sb.storage.from("photos").remove([old]); break; }
     case "admin": adminSheet(); break;
