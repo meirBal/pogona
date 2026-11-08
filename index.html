@@ -555,13 +555,27 @@ function viewAuth(){
 }
 
 /* ---------------- domain logic ---------------- */
+// Care thresholds. Twin block: RULES in supabase/functions/notify/index.ts (push reminders). Keep both in sync.
+// Weather thresholds live in the weather section (COLD_NIGHT / HOT_DAY), same twin.
+const RULES = {
+  BABY_MONTHS: 3,              // stage: baby below this
+  ADULT_MONTHS: 12,            // stage: adult from this; younger (or unknown age) get insects daily
+  INSECT_DAYS_DEFAULT: [0,3],  // adult insect days when the household didn't choose (Sun, Wed)
+  WEIGH_EVERY_DAYS: 7,
+  BULB_CHECK_MONTHS: 12,       // "check bulb replacement"
+  BULB_WARN_MONTHS: 10,        // client only: "replacement coming up"
+  SALAD_ENDS_TOMORROW_DAYS: 3, // salad box age: ends tomorrow
+  SALAD_OLD_DAYS: 4,           // salad box age: old, make a new one
+  DUBIA_CARE_DAYS: 3,          // dubia food / water not marked
+  MEAL_CARROT_WARN_DAYS: 3     // client only: mealworm carrot chip turns orange (server pushes at MEAL_CARROT_NOTIFY_DAYS = 4)
+};
 const STAGES = {
   baby:{n:"תינוק", r:"עד 3 חודשים", ins:"פעם ביום, כמה שהוא אוכל.", veg:"סלט קצוץ דק כל יום, כמה שהוא אוכל.", sup:"סידן על כל החרקים והסלט, מולטי פעמיים בשבוע."},
   juv:{n:"צעיר", r:"עד שנה, בערך", ins:"פעם ביום, 5–6 חרקים בגודל הראש.", veg:"סלט כל יום, בנפח של בערך פי 3 מהחרקים.", sup:"סידן על כל החרקים והסלט, מולטי פעמיים בשבוע."},
   adult:{n:"בוגר", r:"משנה, בערך", ins:"פעמיים בשבוע, 3–4 חרקים בגודל הראש. עודף חרקים מוביל להשמנה.", veg:"לפי ReptiFiles: 3 פעמים בשבוע, מנה בגודל הראש.", sup:"סידן על כל החרקים והסלט, מולטי פעם בשבוע."}
 };
-function stageOf(d){ const m = monthsOld(d.hatch); if(m===null) return null; return m<3?"baby":m<12?"juv":"adult"; }
-const DEF_INSECT_DAYS = [0,3];
+function stageOf(d){ const m = monthsOld(d.hatch); if(m===null) return null; return m<RULES.BABY_MONTHS?"baby":m<RULES.ADULT_MONTHS?"juv":"adult"; }
+const DEF_INSECT_DAYS = RULES.INSECT_DAYS_DEFAULT;
 function insectDays(){ const v=S.config.supp.insectDays; return Array.isArray(v) && v.length ? v.map(Number) : DEF_INSECT_DAYS; }
 // young dragons (or unknown age) eat insects daily; from 12 months only on the chosen days
 function eatsInsects(d, dateStr){ const st=stageOf(d); if(!st || st==="baby" || st==="juv") return true; return insectDays().includes(parseD(dateStr).getDay()); }
@@ -584,13 +598,13 @@ function lastOf(id,type){ return dLogs(id,type)[0] || null; }
 function computeAlerts(){
   const A=[];
   S.dragons.forEach(d=>{
-    const juv = (monthsOld(d.hatch) ?? 6) < 12;
+    const st = stageOf(d), juv = !st || st==="baby" || st==="juv"; // unknown age counts as young
     const tr = weightTrend(d.id);
     if(tr){
       if(tr.last.g < tr.peak*0.9) A.push(["vet", d.name+": ירידה של יותר מ־10% מהשיא", "שיא "+tr.peak+" ג׳, עכשיו "+tr.last.g+" ג׳. כדאי ווטרינר זוחלים."]);
       else if(tr.pct!==null && tr.pct <= -5) A.push(["act", d.name+": ירד במשקל", Math.abs(tr.pct).toFixed(1)+"% מאז "+heDate(tr.ref.date)+". לבדוק טמפרטורות ותיאבון."]);
       else if(juv && tr.ref && daysSince(tr.ref.date)>=18 && tr.delta<=0) A.push(["watch", d.name+": לא עלה במשקל", "צעיר צריך לעלות בהדרגה. ממשיכים לשקול כל שבוע."]);
-      if(daysSince(tr.last.date)>=7) A.push(["info", "יום שקילה: "+d.name, "השקילה האחרונה הייתה לפני "+daysSince(tr.last.date)+" ימים."]);
+      if(daysSince(tr.last.date)>=RULES.WEIGH_EVERY_DAYS) A.push(["info", "יום שקילה: "+d.name, "השקילה האחרונה הייתה לפני "+daysSince(tr.last.date)+" ימים."]);
     } else A.push(["info", "שקילה ראשונה: "+d.name, "משקל מטבח בגרמים, בבוקר לפני אוכל."]);
     const p = dLogs(d.id,"poop").filter(e=>e.d===d.id);
     if(p.length){
@@ -611,11 +625,11 @@ function computeAlerts(){
   });
   S.bulbs.forEach(b=>{
     if(!b.installed) return; const m = daysSince(b.installed)/30.4; const who = b.dragon && dragonById(b.dragon) ? " ("+dragonById(b.dragon).name+")" : "";
-    if(m>=12) A.push(["act", "לבדוק החלפת נורה"+who, (b.label||"נורה")+" מותקנת "+Math.floor(m)+" חודשים. ה־UVB נחלש גם כשהיא עוד מאירה. לפי הוראות היצרן או מד UV."]);
-    else if(m>=10) A.push(["watch", "החלפת נורה מתקרבת"+who, "בעוד כ־"+Math.max(0,Math.round(12-m))+" חודשים. כדאי להזמין מראש."]);
+    if(m>=RULES.BULB_CHECK_MONTHS) A.push(["act", "לבדוק החלפת נורה"+who, (b.label||"נורה")+" מותקנת "+Math.floor(m)+" חודשים. ה־UVB נחלש גם כשהיא עוד מאירה. לפי הוראות היצרן או מד UV."]);
+    else if(m>=RULES.BULB_WARN_MONTHS) A.push(["watch", "החלפת נורה מתקרבת"+who, "בעוד כ־"+Math.max(0,Math.round(RULES.BULB_CHECK_MONTHS-m))+" חודשים. כדאי להזמין מראש."]);
   });
   const sp = S.config.salad.prepared;
-  if(sp){ const age = daysSince(sp); if(age>=4) A.push(["watch","קופסת הסלט ישנה","הוכנה לפני "+age+" ימים. הזמן להכין חדשה."]); else if(age===3) A.push(["info","הסלט נגמר מחר","זמן לתכנן הכנה חדשה."]); }
+  if(sp){ const age = daysSince(sp); if(age>=RULES.SALAD_OLD_DAYS) A.push(["watch","קופסת הסלט ישנה","הוכנה לפני "+age+" ימים. הזמן להכין חדשה."]); else if(age===RULES.SALAD_ENDS_TOMORROW_DAYS) A.push(["info","הסלט נגמר מחר","זמן לתכנן הכנה חדשה."]); }
   powderAlerts().forEach(a=>A.push(a));
   const order = {vet:0, act:1, watch:2, info:3};
   return A.sort((a,b)=>order[a[0]]-order[b[0]]);
@@ -1016,7 +1030,7 @@ async function colPatch(patch){
 }
 function colonyStatus(){
   const c=S.config.colony||{}; if(!c.on) return [];
-  const it=[["food","אוכל",3,6],["water","ג׳ל או ירק לחות",3,6],["clean","ניקוי לשלשת",14,21]];
+  const it=[["food","אוכל",RULES.DUBIA_CARE_DAYS,6],["water","ג׳ל או ירק לחות",RULES.DUBIA_CARE_DAYS,6],["clean","ניקוי לשלשת",14,21]];
   return it.map(([k,l,lim,lim2])=>{ const base = isYmd(c[k]) ? c[k] : isYmd(c.started) ? c.started : null; const ds=base?Math.max(0,daysSince(base)):null; return {k,l,ds,lvl: ds===null?"watch":ds>=lim2?"act":ds>=lim?"watch":"ok"}; });
 }
 function colonyHTML(){
@@ -1075,7 +1089,7 @@ async function mealPatch(patch){
 const MEAL_READY_WEEKS=[10,14]; // rough: eggs ~1-2 wk + larvae ~2-3 months at 25-28°
 function mealStatus(){
   const c=(S.config.colony||{}).meal||{}; if(!c.on) return [];
-  const it=[["carrot","גזר / לחות",3,5],["bran","מצע (סובין)",30,45]];
+  const it=[["carrot","גזר / לחות",RULES.MEAL_CARROT_WARN_DAYS,5],["bran","מצע (סובין)",30,45]];
   if((Number(c.beetles)||0)>0) it.push(["move","העברת חיפושיות",14,21]);
   return it.map(([k,l,lim,lim2])=>{ const base=isYmd(c[k])?c[k]:isYmd(c.started)?c.started:null; const ds=base?Math.max(0,daysSince(base)):null; return {k,l,ds,lvl: ds===null?"watch":ds>=lim2?"act":ds>=lim?"watch":"ok"}; });
 }
@@ -1112,7 +1126,7 @@ function mealSheet(){
 /* ---------------- food tab ---------------- */
 function viewFood(){
   const sp = S.config.salad.prepared; let fresh="";
-  if(sp){ const age=daysSince(sp); const left=Math.max(0,4-age); const pct=Math.max(0,Math.min(100,left/4*100));
+  if(sp){ const age=daysSince(sp); const left=Math.max(0,RULES.SALAD_OLD_DAYS-age); const pct=Math.max(0,Math.min(100,left/RULES.SALAD_OLD_DAYS*100));
     fresh = '<div class="row" style="justify-content:space-between"><span class="small">הוכנה '+(age===0?"היום":"לפני "+age+" ימים")+' · '+esc(heDate(sp))+'</span><span class="chip '+(left>1?"ok":left===1?"watch":"act")+'">'+(left>0?"עוד "+left+" ימים":"להכין חדשה")+'</span></div><div class="fresh"><i style="width:'+pct+'%;background:'+(left>1?"var(--ok)":left===1?"var(--watch)":"var(--act)")+'"></i></div>';
   } else fresh = '<div class="small muted">עוד לא נרשמה הכנה. סמן כשאתה מכין קופסה.</div>';
   let h = agePlanHTML() + '<section class="sec"><div class="sec-h"><h2>קופסת הסלט</h2><span class="hint">מחזיקה 3–4 ימים</span></div><div class="card" style="display:flex;flex-direction:column;gap:10px">'+fresh+
@@ -1479,7 +1493,7 @@ function pushHTML(){
 
 /* ---------------- weather (Open-Meteo, no key) ---------------- */
 let WX = {state:"idle", data:null, err:null, key:null};
-const COLD_NIGHT = 12, HOT_DAY = 35;
+const COLD_NIGHT = 12, HOT_DAY = 35; // twin: COLD_NIGHT / HOT_DAY in notify RULES
 function wxAdvice(w){
   const A=[]; if(!w) return A;
   if(w.nightMin!=null && w.nightMin<=COLD_NIGHT) A.push(["watch","לילה קר: "+w.nightMin+"° בחוץ","למדוד הלילה בתוך הטרריום. אם יורד מתחת ל־15° (18° לצעירים, רף זהיר שלנו), גוף קרמי על טרמוסטט. בלי נורה אדומה."]);

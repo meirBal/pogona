@@ -16,6 +16,20 @@ const daysBetween = (a: string, b: string) => Math.round((Date.parse(b.slice(0, 
 const weekStart = (day: string) => { const d = new Date(day + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() - d.getUTCDay()); return d.toISOString().slice(0, 10); };
 const between = (h: number, a: number, b: number) => h >= a && h < b;
 
+// Care thresholds. Twin block: RULES in index.html (domain logic) + COLD_NIGHT / HOT_DAY in its weather section. Keep both in sync.
+const RULES = {
+  ADULT_MONTHS: 12,             // younger (or unknown age) get insects daily
+  INSECT_DAYS_DEFAULT: [0, 3],  // adult insect days when the household didn't choose (Sun, Wed)
+  WEIGH_EVERY_DAYS: 7,
+  BULB_CHECK_MONTHS: 12,
+  SALAD_ENDS_TOMORROW_DAYS: 3,
+  SALAD_OLD_DAYS: 4,
+  DUBIA_CARE_DAYS: 3,
+  MEAL_CARROT_NOTIFY_DAYS: 4,   // server only: push (client chip turns orange at MEAL_CARROT_WARN_DAYS = 3)
+  COLD_NIGHT: 12,
+  HOT_DAY: 35,
+};
+
 type Sub = { id: string; user_id: string; household_id: string; endpoint: string; p256dh: string; auth: string; prefs: Record<string, boolean> | null };
 type Msg = { kind: string; pref: string; title: string; body: string; day?: string };
 const wants = (s: Sub, pref: string) => !(s.prefs && s.prefs[pref] === false);
@@ -54,41 +68,41 @@ async function remindersFor(hh: string, now: Date): Promise<Msg[] | null> {
   // age: under 12 months (or unknown) insects daily; from 12 months only on the household's insect days
   const months = (h: string | null) => { if (!h) return null; const [y, m] = String(h).split("-").map(Number); if (!Number.isFinite(y) || !Number.isFinite(m)) return null; const [cy, cm] = L.day.split("-").map(Number); const v = (cy - y) * 12 + (cm - m); return v < 0 ? null : v; };
   const sv = (st.data?.supp || {}) as { insectDays?: number[] };
-  const insDays = Array.isArray(sv.insectDays) && sv.insectDays.length ? sv.insectDays.map(Number) : [0, 3];
+  const insDays = Array.isArray(sv.insectDays) && sv.insectDays.length ? sv.insectDays.map(Number) : RULES.INSECT_DAYS_DEFAULT;
   const wd = new Date(L.day + "T12:00:00Z").getUTCDay();
-  const eaters = dragons.filter(d => { const m = months(d.hatch); return m === null || m < 12 || insDays.includes(wd); });
+  const eaters = dragons.filter(d => { const m = months(d.hatch); return m === null || m < RULES.ADULT_MONTHS || insDays.includes(wd); });
   const whoIns = eaters.length && eaters.length < dragons.length ? `רק ל${eaters.map(d => d.name).join(" ו")}: ` : "";
 
   if (between(L.hour, 6, 10) && !today("salad")) out.push({ kind: "salad", pref: "salad", title: "בוקר טוב, זמן סלט", body: `חופן מהקופסה ל${names}, וכמה טיפות מים.` });
   if (eaters.length && between(L.hour, 17, 20) && !today("insect")) out.push({ kind: "insects", pref: "insects", title: "זמן חרקים", body: whoIns + "דוביה מאובקים בקערה העמוקה, ולהוציא את שאריות הסלט." });
   if (eaters.length && between(L.hour, 20, 22) && !today("insect")) out.push({ kind: "insects_late", pref: "insects", title: "עוד לא נרשמה ארוחת חרקים היום", body: whoIns + "אם כבר האכלתם, אפשר לסמן באפליקציה. אם לא, עדיף עכשיו לפני כיבוי האור." });
   if (between(L.hour, 9, 13)) {
-    const late = dragons.filter(d => { const w = (wt.data || []).find(l => l.dragon_id === d.id); return !w || daysBetween(local(new Date(w.ts)).day, L.day) >= 7; });
+    const late = dragons.filter(d => { const w = (wt.data || []).find(l => l.dragon_id === d.id); return !w || daysBetween(local(new Date(w.ts)).day, L.day) >= RULES.WEIGH_EVERY_DAYS; });
     if (late.length) out.push({ kind: "weigh:" + late.map(d => d.id).sort().join(","), pref: "care", day: weekStart(L.day), title: "יום שקילה", body: `לשקול את ${late.map(d => d.name).join(" ו")}, בבוקר לפני אוכל.` });
     const sp = st.data?.salad_prepared as string | null;
-    if (sp && daysBetween(sp, L.day) >= 3) out.push({ kind: "salad_box", pref: "care", title: daysBetween(sp, L.day) >= 4 ? "קופסת הסלט ישנה" : "הסלט נגמר מחר", body: "הזמן להכין קופסה חדשה: 2/3 ירוקים, 1/3 דלורית וזוקיני." });
+    if (sp && daysBetween(sp, L.day) >= RULES.SALAD_ENDS_TOMORROW_DAYS) out.push({ kind: "salad_box", pref: "care", title: daysBetween(sp, L.day) >= RULES.SALAD_OLD_DAYS ? "קופסת הסלט ישנה" : "הסלט נגמר מחר", body: "הזמן להכין קופסה חדשה: 2/3 ירוקים, 1/3 דלורית וזוקיני." });
     const col = (st.data?.colony || {}) as Record<string, unknown>;
     if (col.on) {
-      const need = [["food", "אוכל יבש"], ["water", "ג׳ל מים או ירק"]].filter(([k]) => { const ymd = (x: unknown) => typeof x === "string" && /^\d{4}-\d{2}-\d{2}$/.test(x) ? x : null; const v = ymd(col[k]) || ymd(col.started); return !!v && daysBetween(v, L.day) >= 3; }).map(([, l]) => l);
+      const need = [["food", "אוכל יבש"], ["water", "ג׳ל מים או ירק"]].filter(([k]) => { const ymd = (x: unknown) => typeof x === "string" && /^\d{4}-\d{2}-\d{2}$/.test(x) ? x : null; const v = ymd(col[k]) || ymd(col.started); return !!v && daysBetween(v, L.day) >= RULES.DUBIA_CARE_DAYS; }).map(([, l]) => l);
       if (need.length) out.push({ kind: "colony", pref: "colony", title: "המושבה מחכה", body: `לדוביה: ${need.join(" ו")}. ירק שלא נאכל להוציא לפני שמעפיש.` });
     }
     const meal = (col.meal || {}) as Record<string, unknown>;
     if (meal.on) {
       const ymd = (x: unknown) => typeof x === "string" && /^\d{4}-\d{2}-\d{2}$/.test(x) ? x : null;
       const v = ymd(meal.carrot) || ymd(meal.started);
-      if (v && daysBetween(v, L.day) >= 4) out.push({ kind: "colony_meal", pref: "colony", title: "תולעי הקמח צריכות לחות", body: "פרוסת גזר או תפוח אדמה חדשה, ולהוציא את הישנה לפני שמעפישה." });
+      if (v && daysBetween(v, L.day) >= RULES.MEAL_CARROT_NOTIFY_DAYS) out.push({ kind: "colony_meal", pref: "colony", title: "תולעי הקמח צריכות לחות", body: "פרוסת גזר או תפוח אדמה חדשה, ולהוציא את הישנה לפני שמעפישה." });
     }
     for (const b of bu.data || []) {
       if (!b.installed) continue;
       const months = daysBetween(b.installed, L.day) / 30.4;
-      if (months >= 12) out.push({ kind: "bulb:" + b.id, pref: "care", day: weekStart(L.day), title: "לבדוק החלפת נורה", body: `${b.label || "הנורה"} מותקנת ${Math.floor(months)} חודשים. ה־UVB נחלש גם כשהיא מאירה.` });
+      if (months >= RULES.BULB_CHECK_MONTHS) out.push({ kind: "bulb:" + b.id, pref: "care", day: weekStart(L.day), title: "לבדוק החלפת נורה", body: `${b.label || "הנורה"} מותקנת ${Math.floor(months)} חודשים. ה־UVB נחלש גם כשהיא מאירה.` });
     }
   }
   const loc = (st.data?.location || {}) as { lat?: number; lon?: number; name?: string };
   if (loc.lat && (between(L.hour, 18, 21) || between(L.hour, 8, 11))) {
     const w = await forecast(loc.lat, loc.lon!, L);
-    if (w && between(L.hour, 18, 21) && w.nightMin != null && w.nightMin <= 12) out.push({ kind: "cold", pref: "weather", title: `לילה קר: ${w.nightMin}° ב${loc.name || "חוץ"}`, body: "למדוד הלילה בתוך הטרריום. אם יורד מתחת ל־15° (18° לצעירים), גוף קרמי על טרמוסטט." });
-    if (w && between(L.hour, 8, 11) && w.dayMax != null && w.dayMax >= 35) out.push({ kind: "heat", pref: "weather", title: `יום חם: ${w.dayMax}° ב${loc.name || "חוץ"}`, body: "לבדוק שהצד הקר נשאר עד 29°, ולהרחיק משמש ישירה. אם חם מדי, קודם להצל ולאוורר." });
+    if (w && between(L.hour, 18, 21) && w.nightMin != null && w.nightMin <= RULES.COLD_NIGHT) out.push({ kind: "cold", pref: "weather", title: `לילה קר: ${w.nightMin}° ב${loc.name || "חוץ"}`, body: "למדוד הלילה בתוך הטרריום. אם יורד מתחת ל־15° (18° לצעירים), גוף קרמי על טרמוסטט." });
+    if (w && between(L.hour, 8, 11) && w.dayMax != null && w.dayMax >= RULES.HOT_DAY) out.push({ kind: "heat", pref: "weather", title: `יום חם: ${w.dayMax}° ב${loc.name || "חוץ"}`, body: "לבדוק שהצד הקר נשאר עד 29°, ולהרחיק משמש ישירה. אם חם מדי, קודם להצל ולאוורר." });
   }
   return out;
 }
