@@ -524,7 +524,7 @@ async function loadAll(quiet){
   if(!se.data) S.config={supp:{plainDay:-1,d3:false}, salad:{prepared:null}, shop:{}, vet:{}, location:{}, colony:{}, powders:[]};
   if(se.data) S.config={supp:Object.assign({plainDay:-1,d3:false}, se.data.supp||{}), salad:{prepared:se.data.salad_prepared||null}, shop:se.data.shop||{}, vet:se.data.vet||{}, location:se.data.location||{}, colony:se.data.colony||{}, powders:Array.isArray(se.data.powders)?se.data.powders:[], cover:se.data.cover||null};
   const paths=S.dragons.map(d=>d.photo).concat([S.config.cover]).filter(p=>p && !photoUrls[p]);
-  if(paths.length){ const {data}=await sb.storage.from("photos").createSignedUrls(paths, 86400); (data||[]).forEach(x=>{ if(x.signedUrl) photoUrls[x.path]=x.signedUrl; }); }
+  if(paths.length) await signPhotoPaths(paths);
   S.mode="ready"; render();
   if(S.isAdmin===undefined){ S.isAdmin=false; sb.rpc("is_admin").then(({data})=>{ S.isAdmin=data===true; if(S.isAdmin) render(); }).catch(()=>{}); }
   if(!pushState.checked && !S.adminView) refreshPush();
@@ -543,6 +543,18 @@ async function boot(){
   setTimeout(()=>{ if(S.mode==="loading"){ S.mode="error"; render(); } }, 20000);
   document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible" && user && S.mode==="ready" && !$("#layer").innerHTML) loadAll(); });
 }
+// photos (storage bucket "photos") + direct writes used by events. Paths are built by the callers:
+// the DB enforces <hh>/cover-<n>.jpg and <hh>/tl/<dragon>-<n>.jpg, so these helpers never change a path.
+function uploadPhoto(path, blob){ return sb.storage.from("photos").upload(path, blob, {contentType:"image/jpeg"}); }
+function removePhotos(paths){ return sb.storage.from("photos").remove(paths); }
+async function signPhoto(path){ const su = await sb.storage.from("photos").createSignedUrl(path, 86400); if(su.data) photoUrls[path]=su.data.signedUrl; }
+async function signPhotoPaths(paths){ const {data}=await sb.storage.from("photos").createSignedUrls(paths, 86400); let added=0; (data||[]).forEach(x=>{ if(x.signedUrl){ photoUrls[x.path]=x.signedUrl; added++; } }); return added; }
+function setCover(path){ return sb.from("household_settings").update({cover:path}).eq("household_id",S.hh); }
+function insertTimelinePhoto(row){ return sb.from("dragon_photos").insert(row).select("id,dragon_id,path,taken,note").single(); }
+function deleteTimelinePhoto(id){ return sb.from("dragon_photos").delete().eq("id",id).select("id"); }
+function deleteLogs(ids){ return sb.from("logs").delete().in("id",ids); }
+function insertLogs(rows){ return sb.from("logs").insert(rows); }
+function removeMember(uid){ return sb.from("household_members").delete().eq("household_id",S.hh).eq("user_id",uid); }
 function viewAuth(){
   const G='<svg viewBox="0 0 48 48" width="22" height="22" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>';
   return '<section class="hero" style="min-height:160px"><div class="txt"><div class="big">ברוכים הבאים</div><div class="small">יומן, שגרה ומדריך לגידול חרדונים</div></div><div class="bgd">'+dragonSVG({ground:false, anim:"anim-bob-slow"})+'</div></section>'+
@@ -751,7 +763,7 @@ let tlSigning=false; const tlTried=new Set();
 async function signPhotos(paths){
   const need=paths.filter(p=>p && !photoUrls[p] && !tlTried.has(p)).slice(0,100); if(!need.length || tlSigning) return;
   tlSigning=true; need.forEach(p=>tlTried.add(p)); let added=0;
-  try{ const {data}=await sb.storage.from("photos").createSignedUrls(need, 86400); (data||[]).forEach(x=>{ if(x.signedUrl){ photoUrls[x.path]=x.signedUrl; added++; } }); }catch(e){}
+  try{ added = await signPhotoPaths(need); }catch(e){}
   tlSigning=false; if(added) render();
 }
 function weightNear(id, date){ const w=weights(id); let best=null; w.forEach(x=>{ const dd=Math.abs(parseD(x.date)-parseD(date))/864e5; if(dd<=7 && (!best || dd<best.dd)) best={g:x.g, dd}; }); return best; }
@@ -785,13 +797,13 @@ async function uploadCover(f0){
   const f = await compressImage(f0, 1600);
   if(!f){ toast("הפורמט לא נתמך בדפדפן הזה. נסו JPEG או PNG"); return; }
   const path = S.hh+"/cover-"+Date.now()+".jpg";
-  const up = await sb.storage.from("photos").upload(path, f, {contentType:"image/jpeg"});
+  const up = await uploadPhoto(path, f);
   if(up.error){ toast("ההעלאה נכשלה"); return; }
-  const {error} = await sb.from("household_settings").update({cover:path}).eq("household_id",S.hh);
-  if(error){ sb.storage.from("photos").remove([path]); fail(error); return; }
-  const su = await sb.storage.from("photos").createSignedUrl(path, 86400); if(su.data) photoUrls[path]=su.data.signedUrl;
+  const {error} = await setCover(path);
+  if(error){ removePhotos([path]); fail(error); return; }
+  await signPhoto(path);
   const old=S.config.cover; S.config.cover=path; render(); toast("התמונה נשמרה");
-  if(old) sb.storage.from("photos").remove([old]);
+  if(old) removePhotos([old]);
 }
 async function uploadTimeline(did, f){
   if(!/^image\//.test(f.type||"image/")){ toast("צריך קובץ תמונה"); return; }
@@ -801,11 +813,11 @@ async function uploadTimeline(did, f){
   if(!blob){ toast("הפורמט לא נתמך בדפדפן הזה. נסו לצלם שוב או לבחור JPEG/PNG"); return; }
   if(blob.size > 10*1024*1024){ toast("התמונה גדולה מדי"); return; }
   const path = S.hh+"/tl/"+did+"-"+Date.now()+".jpg";
-  const up = await sb.storage.from("photos").upload(path, blob, {contentType:"image/jpeg"});
+  const up = await uploadPhoto(path, blob);
   if(up.error){ toast("ההעלאה נכשלה"); return; }
-  const {data,error} = await sb.from("dragon_photos").insert({household_id:S.hh, dragon_id:did, path, taken:today()}).select("id,dragon_id,path,taken,note").single();
-  if(error){ sb.storage.from("photos").remove([path]); fail(error); return; }
-  const su = await sb.storage.from("photos").createSignedUrl(path, 86400); if(su.data) photoUrls[path]=su.data.signedUrl;
+  const {data,error} = await insertTimelinePhoto({household_id:S.hh, dragon_id:did, path, taken:today()});
+  if(error){ removePhotos([path]); fail(error); return; }
+  await signPhoto(path);
   S.photos=[data].concat(S.photos||[]); render(); toast("התמונה נשמרה");
 }
 function logLabel(e){
@@ -1444,6 +1456,7 @@ async function saveSub(sub){ const j=sub.toJSON(); const {data,error}=await sb.f
 // other sections call these instead of writing pushState
 function markPushStale(){ pushState.checked=false; }
 function resetPushState(){ pushState={sub:null,row:null,checked:false}; }
+async function dropPushOnLogout(){ if(pushState.row) await sb.from("push_subscriptions").delete().eq("id",pushState.row.id); if(pushState.sub) await pushState.sub.unsubscribe(); }
 async function refreshPush(){
   if(!pushSupported() || !S.hh || !user){ pushState.checked=true; return; }
   try{ const reg=await navigator.serviceWorker.ready; pushState.sub=await reg.pushManager.getSubscription();
@@ -1561,15 +1574,15 @@ document.addEventListener("click", async ev=>{
     case "closeSheet": closeSheet(); break;
     case "settings": settingsSheet(); break;
     case "guide": guideSheet(id); break;
-    case "coverReset": { const old=S.config.cover; const {error}=await sb.from("household_settings").update({cover:null}).eq("household_id",S.hh); if(error){ fail(error); break; } S.config.cover=null; render(); if(old) sb.storage.from("photos").remove([old]); break; }
-    case "avReset": { const d=Object.assign({},dragonById(id)); if(!d.id) break; const old=d.photo; d.photo=null; await saveDragon(d); if(old) sb.storage.from("photos").remove([old]); break; }
+    case "coverReset": { const old=S.config.cover; const {error}=await setCover(null); if(error){ fail(error); break; } S.config.cover=null; render(); if(old) removePhotos([old]); break; }
+    case "avReset": { const d=Object.assign({},dragonById(id)); if(!d.id) break; const old=d.photo; d.photo=null; await saveDragon(d); if(old) removePhotos([old]); break; }
     case "admin": adminSheet(); break;
     case "adminEnter": adminEnter(id); break;
     case "adminExit": adminExit(); break;
     case "tlOpen": S.confirmDel=null; tlSheet(id); break;
     case "tlDel": { const p=(S.photos||[]).find(x=>x.id===id); if(!p) break; if(S.confirmDel!==id){ S.confirmDel=id; tlSheet(id); break; } S.confirmDel=null; closeSheet();
-      const {data:gone,error}=await sb.from("dragon_photos").delete().eq("id",id).select("id"); if(error||!gone||!gone.length){ toast("רק מי שהעלה את התמונה או בעל הבית יכולים למחוק"); break; }
-      const rm=await sb.storage.from("photos").remove([p.path]); if(rm.error) console.error(rm.error); S.photos=S.photos.filter(x=>x.id!==id); render(); toast("נמחקה"); break; }
+      const {data:gone,error}=await deleteTimelinePhoto(id); if(error||!gone||!gone.length){ toast("רק מי שהעלה את התמונה או בעל הבית יכולים למחוק"); break; }
+      const rm=await removePhotos([p.path]); if(rm.error) console.error(rm.error); S.photos=S.photos.filter(x=>x.id!==id); render(); toast("נמחקה"); break; }
     case "powAdd": powderSheet(null); break;
     case "powEdit": powderSheet(id); break;
     case "powSave": await savePowderFromSheet(); break;
@@ -1593,7 +1606,7 @@ document.addEventListener("click", async ev=>{
     case "rtUndo": { const type=el.dataset.type; if(S.confirmDel!=="rt:"+type){ S.confirmDel="rt:"+type; render(); clearTimeout(window._rtT); window._rtT=setTimeout(()=>{ if(S.confirmDel==="rt:"+type){ S.confirmDel=null; render(); } },4000); break; }
       S.confirmDel=null; const B=routineBatches(type); if(!B.length){ render(); break; }
       const ids=B[0].map(e=>e.id), prev=S.logs; S.logs=S.logs.filter(e=>!ids.includes(e.id)); render();
-      const {error}=await sb.from("logs").delete().in("id",ids); if(error){ S.logs=prev; render(); fail(error); } else toast("הסימון בוטל"); break; }
+      const {error}=await deleteLogs(ids); if(error){ S.logs=prev; render(); fail(error); } else toast("הסימון בוטל"); break; }
     case "quick": S.logDragon=id; S.tab="log"; lsSet("pg.tab","log"); render(); window.scrollTo(0,0); break;
     case "pickDragon": S.logDragon=id; S.confirmDel=null; render(); break;
     case "sheet": sheetFor(el.dataset.type, id); break;
@@ -1626,11 +1639,11 @@ document.addEventListener("click", async ev=>{
     case "pushTest": testPush(); break;
     case "pushPref": setPushPref(el.dataset.k); break;
     case "saveVet": { const c=el.closest(".card"); const ph=(c.querySelector("#vPhone").value||"").trim(); if(ph && ph.replace(/\D/g,"").length<7){ toast("מספר הטלפון קצר מדי"); break; } S.config.vet={name:(c.querySelector("#vName").value||"").trim(), phone:ph, note:(c.querySelector("#vNote").value||"").trim()}; await saveConfig(); toast("נשמר"); if($("#layer").innerHTML) vetsSheet(); break; }
-    case "rmMember": if(S.confirmDel==="m"+id){ S.confirmDel=null; const {error}=await sb.from("household_members").delete().eq("household_id",S.hh).eq("user_id",id); if(error) toast("ההסרה נכשלה"); else { await loadAll(true); toast("הוסר מהבית"); } settingsSheet(); } else { S.confirmDel="m"+id; settingsSheet(); } break;
-    case "leaveHH": if(S.confirmDel==="leave"){ S.confirmDel=null; const {error}=await sb.from("household_members").delete().eq("household_id",S.hh).eq("user_id",user.id); if(error){ toast("לא הצלחתי לעזוב"); break; } closeSheet(); S.hh=null; lsSet("pg.hh",null); S.mode="loading"; render(); loadAll(); } else { S.confirmDel="leave"; settingsSheet(); } break;
+    case "rmMember": if(S.confirmDel==="m"+id){ S.confirmDel=null; const {error}=await removeMember(id); if(error) toast("ההסרה נכשלה"); else { await loadAll(true); toast("הוסר מהבית"); } settingsSheet(); } else { S.confirmDel="m"+id; settingsSheet(); } break;
+    case "leaveHH": if(S.confirmDel==="leave"){ S.confirmDel=null; const {error}=await removeMember(user.id); if(error){ toast("לא הצלחתי לעזוב"); break; } closeSheet(); S.hh=null; lsSet("pg.hh",null); S.mode="loading"; render(); loadAll(); } else { S.confirmDel="leave"; settingsSheet(); } break;
     case "switchHH": closeSheet(); S.adminView=null; S.hh=id; lsSet("pg.hh",id); subscribeLive(); S.mode="loading"; render(); markPushStale(); loadAll(); break;
     case "google": { S.authBusy=true; S.authMsg=""; render(); const {error}=await sb.auth.signInWithOAuth({provider:"google", options:{redirectTo: location.origin+location.pathname}}); if(error){ S.authBusy=false; S.authMsg="!הכניסה עם Google לא הצליחה: "+error.message; render(); } break; }
-    case "logout": closeSheet(); try{ if(pushState.row) await sb.from("push_subscriptions").delete().eq("id",pushState.row.id); if(pushState.sub) await pushState.sub.unsubscribe(); }catch(e){} resetPushState(); await sb.auth.signOut(); break;
+    case "logout": closeSheet(); try{ await dropPushOnLogout(); }catch(e){} resetPushState(); await sb.auth.signOut(); break;
     case "vetSummary": vetSummary(); break;
     case "copyVs": { const t=$("#vs"); try{ await navigator.clipboard.writeText(t.value); toast("הועתק"); }catch(e){ t.select(); toast("סמן והעתק ידנית"); } break; }
     case "backup": doBackup(); break;
@@ -1670,11 +1683,11 @@ document.addEventListener("change", async ev=>{
   const f = await compressImage(f0, 900);
   if(!f){ toast("הפורמט לא נתמך בדפדפן הזה. נסו JPEG או PNG"); return; }
   const path = S.hh+"/"+pid+"-"+Date.now()+".jpg";
-  const up = await sb.storage.from("photos").upload(path, f, {contentType:"image/jpeg"});
+  const up = await uploadPhoto(path, f);
   if(up.error){ toast("ההעלאה נכשלה"); return; }
-  const su = await sb.storage.from("photos").createSignedUrl(path, 86400); if(su.data) photoUrls[path]=su.data.signedUrl;
+  await signPhoto(path);
   const d=Object.assign({},dragonById(pid)); const oldp=d.photo; d.photo=path; await saveDragon(d);
-  if(oldp) sb.storage.from("photos").remove([oldp]);
+  if(oldp) removePhotos([oldp]);
   toast("התמונה נשמרה"); if($("#layer").innerHTML) settingsSheet();
 });
 async function doLogin(){
@@ -1708,7 +1721,7 @@ async function doRestore(){
   for(const b of (j.bulbs||[])){ await saveBulb(Object.assign({}, b, {id:"new", dragon: map[b.dragon]||""})); }
   let logs = j.logs || []; if(j.months){ for(const mk in j.months) logs = logs.concat(j.months[mk].entries||[]); }
   const rows = logs.filter(e=>e.d==="both"||map[e.d]).map(e=>({household_id:S.hh, dragon_id: e.d==="both"?null:map[e.d], type:e.type, v:e.v||{}, ts:e.ts}));
-  for(let i=0;i<rows.length;i+=500){ const {error}=await sb.from("logs").insert(rows.slice(i,i+500)); if(error){ fail(error); break; } }
+  for(let i=0;i<rows.length;i+=500){ const {error}=await insertLogs(rows.slice(i,i+500)); if(error){ fail(error); break; } }
   if(j.config && j.config.supp){ S.config.supp=Object.assign(S.config.supp, j.config.supp); if(j.config.salad) S.config.salad=j.config.salad; await saveConfig(); }
   await loadAll(); toast("השחזור הסתיים");
 }
