@@ -948,13 +948,13 @@ async function adminEnter(id){
   closeSheet();
   if(!S.adminView) S.adminView={prev:S.hh};
   S.adminView.id=data.id; S.adminView.name=data.name;
-  S.hh=data.id; S.tab="today"; S.logDragon=null; S.photos=[]; WX={state:"idle", key:null};
+  S.hh=data.id; S.tab="today"; S.logDragon=null; S.photos=[]; resetWeather();
   subscribeLive(); await loadAll();
   toast("נכנסת ל"+(data.name||"בית"));
 }
 async function adminExit(){
   if(!S.adminView) return; const prev=S.adminView.prev; S.adminView=null;
-  S.hh=prev; S.logDragon=null; S.photos=[]; WX={state:"idle", key:null};
+  S.hh=prev; S.logDragon=null; S.photos=[]; resetWeather();
   subscribeLive(); await loadAll(); toast("חזרת לבית שלך");
 }
 
@@ -978,7 +978,7 @@ function powdersHTML(){
 }
 function powderSheet(id){
   const p=(S.config.powders||[]).find(x=>x.id===id)||{id:null, kind:"ca", name:"", opened:today(), exp:""};
-  sheetState={type:"powder", id:p.id, kind:p.kind};
+  setSheetState({type:"powder", id:p.id, kind:p.kind});
   openSheet(sheetHead(p.id?"עריכת אבקה":"אבקה חדשה")+optsHTML("powKind",POW_KINDS,p.kind)+
     '<div class="field"><label for="powName">שם (לא חובה)</label><input id="powName" maxlength="40" value="'+esc(p.name||"")+'" placeholder="למשל Repashy"></div>'+
     '<div class="fgrid2"><div class="field"><label for="powOpen">נפתחה</label><input id="powOpen" type="date" value="'+esc(p.opened||"")+'"></div><div class="field"><label for="powExp">תוקף על האריזה</label><input id="powExp" type="date" value="'+esc(p.exp||"")+'"></div></div>'+
@@ -1333,6 +1333,7 @@ function viewScan(){
 
 /* ---------------- sheets ---------------- */
 let sheetState = {};
+function setSheetState(o){ sheetState=o; } // other sections call this instead of writing sheetState
 function openSheet(html){ $("#layer").innerHTML = '<div class="scrim" data-act="closeSheet"><div class="sheet" role="dialog" aria-modal="true" data-stop="1"><div class="grab"></div>'+html+'</div></div>'; const f=$("#layer .sheet input, #layer .sheet button.pri"); if(f) setTimeout(()=>f.focus(),30); }
 function closeSheet(){ $("#layer").innerHTML=""; sheetState={}; if(pendingReload){ pendingReload=false; setTimeout(()=>loadAll(true),0); } }
 function sheetHead(t){ return '<div class="sheet-h"><h2>'+t+'</h2><button class="iconbtn" data-act="closeSheet" aria-label="סגירה">'+ico("x")+'</button></div>'; }
@@ -1440,6 +1441,9 @@ let pushState = {sub:null, row:null, checked:false};
 function b64ToU8(b){ const pad="=".repeat((4-b.length%4)%4); const raw=atob((b+pad).replace(/-/g,"+").replace(/_/g,"/")); return Uint8Array.from([...raw].map(c=>c.charCodeAt(0))); }
 function sameKey(sub){ try{ const k=sub.options && sub.options.applicationServerKey; if(!k) return true; const a=new Uint8Array(k), b=b64ToU8(VAPID_PUBLIC); return a.length===b.length && a.every((x,i)=>x===b[i]); }catch(e){ return true; } }
 async function saveSub(sub){ const j=sub.toJSON(); const {data,error}=await sb.from("push_subscriptions").upsert({endpoint:j.endpoint, p256dh:j.keys.p256dh, auth:j.keys.auth, household_id:S.hh, user_id:user.id}, {onConflict:"endpoint"}).select().single(); if(error) throw error; return data; }
+// other sections call these instead of writing pushState
+function markPushStale(){ pushState.checked=false; }
+function resetPushState(){ pushState={sub:null,row:null,checked:false}; }
 async function refreshPush(){
   if(!pushSupported() || !S.hh || !user){ pushState.checked=true; return; }
   try{ const reg=await navigator.serviceWorker.ready; pushState.sub=await reg.pushManager.getSubscription();
@@ -1493,6 +1497,7 @@ function pushHTML(){
 
 /* ---------------- weather (Open-Meteo, no key) ---------------- */
 let WX = {state:"idle", data:null, err:null, key:null};
+function resetWeather(){ WX={state:"idle", key:null}; } // other sections call this instead of writing WX
 const COLD_NIGHT = 12, HOT_DAY = 35; // twin: COLD_NIGHT / HOT_DAY in notify RULES
 function wxAdvice(w){
   const A=[]; if(!w) return A;
@@ -1615,7 +1620,7 @@ document.addEventListener("click", async ev=>{
     case "invite": doInvite(); break;
     case "vets": vetsSheet(); break;
     case "wxSetup": wxSetupSheet(); break;
-    case "wxPick": { S.config.location={name:el.dataset.name, lat:Math.round(+el.dataset.lat*1e4)/1e4, lon:Math.round(+el.dataset.lon*1e4)/1e4}; closeSheet(); WX={state:"idle", key:null}; try{ sessionStorage.removeItem("pg.wx"); }catch(e){} await saveConfig(); toast("נשמר: "+el.dataset.name); break; }
+    case "wxPick": { S.config.location={name:el.dataset.name, lat:Math.round(+el.dataset.lat*1e4)/1e4, lon:Math.round(+el.dataset.lon*1e4)/1e4}; closeSheet(); resetWeather(); try{ sessionStorage.removeItem("pg.wx"); }catch(e){} await saveConfig(); toast("נשמר: "+el.dataset.name); break; }
     case "pushOn": enablePush(); break;
     case "pushOff": disablePush(); break;
     case "pushTest": testPush(); break;
@@ -1623,9 +1628,9 @@ document.addEventListener("click", async ev=>{
     case "saveVet": { const c=el.closest(".card"); const ph=(c.querySelector("#vPhone").value||"").trim(); if(ph && ph.replace(/\D/g,"").length<7){ toast("מספר הטלפון קצר מדי"); break; } S.config.vet={name:(c.querySelector("#vName").value||"").trim(), phone:ph, note:(c.querySelector("#vNote").value||"").trim()}; await saveConfig(); toast("נשמר"); if($("#layer").innerHTML) vetsSheet(); break; }
     case "rmMember": if(S.confirmDel==="m"+id){ S.confirmDel=null; const {error}=await sb.from("household_members").delete().eq("household_id",S.hh).eq("user_id",id); if(error) toast("ההסרה נכשלה"); else { await loadAll(true); toast("הוסר מהבית"); } settingsSheet(); } else { S.confirmDel="m"+id; settingsSheet(); } break;
     case "leaveHH": if(S.confirmDel==="leave"){ S.confirmDel=null; const {error}=await sb.from("household_members").delete().eq("household_id",S.hh).eq("user_id",user.id); if(error){ toast("לא הצלחתי לעזוב"); break; } closeSheet(); S.hh=null; lsSet("pg.hh",null); S.mode="loading"; render(); loadAll(); } else { S.confirmDel="leave"; settingsSheet(); } break;
-    case "switchHH": closeSheet(); S.adminView=null; S.hh=id; lsSet("pg.hh",id); subscribeLive(); S.mode="loading"; render(); pushState.checked=false; loadAll(); break;
+    case "switchHH": closeSheet(); S.adminView=null; S.hh=id; lsSet("pg.hh",id); subscribeLive(); S.mode="loading"; render(); markPushStale(); loadAll(); break;
     case "google": { S.authBusy=true; S.authMsg=""; render(); const {error}=await sb.auth.signInWithOAuth({provider:"google", options:{redirectTo: location.origin+location.pathname}}); if(error){ S.authBusy=false; S.authMsg="!הכניסה עם Google לא הצליחה: "+error.message; render(); } break; }
-    case "logout": closeSheet(); try{ if(pushState.row) await sb.from("push_subscriptions").delete().eq("id",pushState.row.id); if(pushState.sub) await pushState.sub.unsubscribe(); }catch(e){} pushState={sub:null,row:null,checked:false}; await sb.auth.signOut(); break;
+    case "logout": closeSheet(); try{ if(pushState.row) await sb.from("push_subscriptions").delete().eq("id",pushState.row.id); if(pushState.sub) await pushState.sub.unsubscribe(); }catch(e){} resetPushState(); await sb.auth.signOut(); break;
     case "vetSummary": vetSummary(); break;
     case "copyVs": { const t=$("#vs"); try{ await navigator.clipboard.writeText(t.value); toast("הועתק"); }catch(e){ t.select(); toast("סמן והעתק ידנית"); } break; }
     case "backup": doBackup(); break;
@@ -1720,7 +1725,7 @@ async function doInstall(){
   if(isIOS){ openSheet(sheetHead("התקנה באייפון")+'<div class="small" style="display:flex;flex-direction:column;gap:8px"><div>1. בספארי, ללחוץ על כפתור השיתוף (ריבוע עם חץ למעלה) בתחתית המסך.</div><div>2. לבחור <b>הוסף למסך הבית</b>.</div><div>3. ללחוץ <b>הוסף</b>. האייקון של פוגונה יופיע במסך הבית.</div></div>'); return; }
   openSheet(sheetHead("התקנה")+'<div class="small">בתפריט הדפדפן (שלוש הנקודות) לבחור <b>התקן אפליקציה</b> או <b>הוסף למסך הבית</b>.</div>');
 }
-if("serviceWorker" in navigator){ window.addEventListener("load", ()=>{ navigator.serviceWorker.register("sw.js").catch(()=>{}); }); navigator.serviceWorker.addEventListener("message", e=>{ if(e.data && e.data.type==="pushsubscriptionchange"){ pushState.checked=false; if(user && S.hh) refreshPush(); } }); }
+if("serviceWorker" in navigator){ window.addEventListener("load", ()=>{ navigator.serviceWorker.register("sw.js").catch(()=>{}); }); navigator.serviceWorker.addEventListener("message", e=>{ if(e.data && e.data.type==="pushsubscriptionchange"){ markPushStale(); if(user && S.hh) refreshPush(); } }); }
 updInstall();
 
 boot();
